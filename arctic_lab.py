@@ -448,7 +448,9 @@
 # Added hotkeys for activate/deactivate objects
 # Improved the context sensitive object selection with hotkeys
 
-
+# v0.14.9
+# Main generator now properly controls all lamps, as well as the radio
+# Objects that were off before shutting down main power will stay off, objects that were on will turn back on
 
 
 #TO DO:
@@ -890,6 +892,7 @@ class Object:
 		self.functions_as_door = functions_as_door
 		self.functions_as_lock = False
 		self.functions_on_off = False
+		self.attached_to_main_power = False
 
 		self.components = components
 		self.inventory = inventory
@@ -966,6 +969,9 @@ class Object:
 			object_to_toggle.off_function(object_to_toggle.off_argument)
 		else:
 			object_to_toggle.on_off_state = 'On'
+			if object_to_toggle.attached_to_main_power and not main_power_on:
+				Message(object_to_toggle.name + ' has no power.', 'Narrator', relevant_objects = [self, object_to_toggle])
+				return False
 			object_to_toggle.on_function(object_to_toggle.on_argument)
 			
 		activate_sound.play()
@@ -3774,22 +3780,25 @@ def target_tile(return_object_if_possible = False, max_range = None):
 				return map[x][y]
 				
 def toggle_main_power(force_state = None):
-	global light_sources, main_power_on
+	global light_sources, main_power_on, affixed_objects, non_affixed_objects
 	
 	if main_power_on == True:
 		main_power_on = False
 	else:
 		main_power_on = True
-	
-	for light_source in light_sources:
-		if light_source.name == 'Lamp':
-			if main_power_on:
-				light_source.light_radius = light_source.previous_light_radius
-			else:
-				light_source.light_radius = 0
-	
 		
+	all_objects = affixed_objects + non_affixed_objects
 	
+	for an_object in all_objects:
+		if an_object.attached_to_main_power:
+			if main_power_on:
+				if an_object.on_off_state == 'On':
+					an_object.on_off_state = 'Off'
+					an_object.toggle_on_off(an_object)
+			else:
+				if an_object.on_off_state == 'On':
+					an_object.toggle_on_off(an_object)
+					an_object.on_off_state = 'On'
 				
 def reset_everything():
 	global map
@@ -4673,6 +4682,7 @@ def get_object_by_name(object_name):
 		
 		this_object.functions_on_off = True
 		this_object.on_off_state = 'Off'
+		this_object.attached_to_main_power = True
 		
 		this_object.on_function = play_music
 		this_object.on_argument = ('bto.ogg')
@@ -4707,6 +4717,7 @@ def get_object_by_name(object_name):
 		
 		this_object.functions_on_off = True
 		this_object.on_off_state = 'On'
+		this_object.attached_to_main_power = True
 		
 		this_object.light_source = True
 		this_object.light_radius = 8
@@ -4762,7 +4773,7 @@ def get_object_by_name(object_name):
 		this_object.description = "Player"
 		this_object.unit = get_unit_by_name('Scientist')
 		this_object.light_source = True
-		this_object.light_radius = 5
+		this_object.light_radius = 7
 
 	elif object_name == 'Scientist':
 		this_object = get_predesigned_object_by_name('Humanoid')
