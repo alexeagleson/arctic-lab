@@ -420,13 +420,33 @@
 # Unit NPCs will not appear at all once they are outside your FOV -- too confusing to show their last known location since they are always moving.
 # Menu's will no longer exit if you click outside of the option text -- to cancel a menu now press right mouse button
 
-# V.0143
-# 
+# v0.14.3
+# Fixed: pressing right click to close menu no longer selects the top option
+# Fixed: units could not path through doorways with obstacles in them (would repeatedly open/close the door)
+# Decided MacReady's a big fan of BTO.
 
+# v0.14.4
+# In-progress major overhaul to the lighting system
 
+# v0.14.5
+# Major overhaul to the lighting system -- now allows separate light sources with their own FOV's (lamps for examaple)
+# Previously tiles were 'illumnated' if they were within the player's FOV.  Now tiles are flagged as illuminated based on all light sources, and only 'render' as illuminated if in player's FOV.  
+# Player now has a 20 tile "vision" radius and an 8 tile natural light source radius.  Player can see a tile 20 tiles away if it's illuminated by an external source, but if there is none, will only be able to see 8 tiles away.
+# Biggest challenge was that tiles now had to be overhauled from previously having only an 'illuminated / not illuminated' state, to now keeping track of which of the four cardinal directions are illuminated.
+# What was happening when this feature was introduced, was that external light sources outside were illuminating the exterior wall, and the player could see them lit up when inside the room (which doesn't make sense).
+# Now the external light, if on the north side of the building, will only illuminate the north side of the wall, and the player inside will not see it as illuminated because he / she is looking at the south side.
 
+# v0.14.6
+# Added on/off functionality for objects -- can assign functions to objects like light on/off as example
+# Added a flashlight that you can pick up with a higher FOV radius that the player's default
 
+# v0.14.7
+# Added a radio with music
+# Added 'main power' function with generator that controls all lamps in the facility
 
+# v0.14.8
+# Added hotkeys for activate/deactivate objects
+# Improved the context sensitive object selection with hotkeys
 
 
 
@@ -434,8 +454,8 @@
 #TO DO:
 
 
-# objects will get stuck in doorways not knowing whether to open the door or climb over an obstacle
-# flashlight
+
+# show left/right and on/off in items description
 # refactor object placement system
 # AI improvements - pick up objects for a reason
 # feelings / suspicion system
@@ -510,7 +530,7 @@ MAX_ROOMS = 30
 
 FOV_ALGO = 0  # default FOV algorithm
 FOV_LIGHT_WALLS = True  # light walls or not
-TORCH_RADIUS = 15
+MAX_VISIBILITY_RADIUS = 20
 
 SIZE_TO_BLOCK_SIGHT = 10
 
@@ -559,7 +579,9 @@ EXAMINE_FEELINGS_CHANGE = -1
 
 DISTANCE_TO_INTERACT = 3
 
-EXPLORED_TILE_COLOUR_DESATURATION = 0.5
+EXPLORED_TILE_COLOUR_DESATURATION = 0.3
+
+DISABLE_THE_THING = False
 
 # as a fraction of total size of object
 DEFAULT_HEAD_SIZE = 0.1
@@ -670,12 +692,35 @@ class Tile:
 		self.last_known_foreground_colour = None
 		self.last_known_background_colour = None
 		
+		self.rendered_on_frame_number = None
+		
+		self.illuminated = False
+		self.illuminated_up = False
+		self.illuminated_down = False
+		self.illuminated_left = False
+		self.illuminated_right = False
+
+		
 	def distance_to(self, other):
 		# return the distance to another object
 		dx = other.x - self.x
 		dy = other.y - self.y
 		return math.sqrt(dx ** 2 + dy ** 2)
-
+		
+	def angle_to(self, other):
+		dx = other.x - self.x
+		dy = other.y - self.y
+		if abs(dx) > abs(dy):
+			if dx > 0:
+				return 'Right'
+			elif dx < 0:
+				return 'Left'
+		else:
+			if dy > 0:
+				return 'Down'
+			if dy > 0:
+				return 'Up'
+		
 	def check_blocks_sight(self):
 		if self.wall:
 			return True
@@ -714,17 +759,24 @@ class Tile:
 		return total_size
 		
 	def render_me(self):
-		global fov_map
+		global fov_map, EXPLORED_TILE_COLOUR_DESATURATION
+		
+		if not self.illuminated:
+			if player.x >= self.x and self.illuminated_right: self.illuminated = True
+			if player.y >= self.y and self.illuminated_down: self.illuminated = True
+			if player.x <= self.x and self.illuminated_left: self.illuminated = True
+			if player.y <= self.y and self.illuminated_up: self.illuminated = True
 
+			
 		visible = libtcod.map_is_in_fov(fov_map, self.x, self.y)
 		
+		if SHOW_ALL or (visible and self.illuminated):
 		
-		if visible or SHOW_ALL:
 			self.explored = True
 			self.last_known_char = self.char
 			self.last_known_foreground_colour = self.foreground_colour * EXPLORED_TILE_COLOUR_DESATURATION
 			self.last_known_background_colour = self.background_colour * EXPLORED_TILE_COLOUR_DESATURATION
-			
+
 			if len(self.objects_on_this_tile) > 0:
 				biggest_object = pick_largest(self.objects_on_this_tile)
 				use_this_foreground_colour = biggest_object.foreground_colour
@@ -741,8 +793,7 @@ class Tile:
 					self.last_known_char = self.char
 					self.last_known_foreground_colour = self.foreground_colour * EXPLORED_TILE_COLOUR_DESATURATION
 					self.last_known_background_colour = self.background_colour * EXPLORED_TILE_COLOUR_DESATURATION
-				
-				
+
 				libtcod.console_put_char_ex(con, self.x, self.y, biggest_object.char, use_this_foreground_colour, use_this_background_colour)
 
 			else:
@@ -752,8 +803,8 @@ class Tile:
 				libtcod.console_put_char_ex(con, self.x, self.y, self.last_known_char, self.last_known_foreground_colour, self.last_known_background_colour)
 			else:
 				libtcod.console_put_char_ex(con, self.x, self.y, ' ', libtcod.black, libtcod.black)
-		
-		
+			
+		return True
 		
 		
 
@@ -838,6 +889,7 @@ class Object:
 		self.destroyed = destroyed
 		self.functions_as_door = functions_as_door
 		self.functions_as_lock = False
+		self.functions_on_off = False
 
 		self.components = components
 		self.inventory = inventory
@@ -858,6 +910,7 @@ class Object:
 
 		self.open_closed_state = 'Closed'
 		self.locked_unlocked_state = 'Locked'
+		self.on_off_state = 'Off'
 
 		self.equipped = None
 		self.equipped_to = None
@@ -880,7 +933,47 @@ class Object:
 		self.how_should_I_proceed = None
 		self.what_object_should_I_interact_with = None
 		
+		self.light_source = False
+		self.light_radius = None
+		
+		self.on_function = None
+		self.on_argument = None
+		
+		self.off_function = None
+		self.off_argument = None
+
+		
 		self.ID = generate_4_digit_ID()
+		
+	def toggle_on_off(self, object_to_toggle, force_state = None):
+
+		if not object_to_toggle.functions_on_off:
+			Message(object_to_toggle.name + ' does not have an activate function.', 'Narrator', relevant_objects = [self, object_to_toggle])
+			return False
+			
+		if object_to_toggle.destroyed:
+			Message(object_to_toggle.name + ' is broken and cannot be activated.', 'Narrator', relevant_objects = [self, object_to_toggle])
+			return False
+	
+		if force_state:
+			if force_state == 'On':
+				object_to_toggle.on_off_state = 'Off'
+			else:
+				object_to_toggle.on_off_state = 'On'
+				
+		if object_to_toggle.on_off_state == 'On':
+			object_to_toggle.on_off_state = 'Off'
+			object_to_toggle.off_function(object_to_toggle.off_argument)
+		else:
+			object_to_toggle.on_off_state = 'On'
+			object_to_toggle.on_function(object_to_toggle.on_argument)
+			
+		activate_sound.play()
+		return True
+		
+		
+	def adjust_light_radius(self, new_radius):
+		self.light_radius = new_radius
 		
 	def cancel_all_tasks(self):
 		for my_task in self.task_queue:
@@ -909,6 +1002,13 @@ class Object:
 			self.weight = (get_material_stats_by_name(self.material, 'Weight') * self.size)
 			
 		return True
+		
+	def move_inventory_coords_to_location(self, x, y):
+		for inventory_item in self.inventory:
+			inventory_item.x = x
+			inventory_item.y = y
+			if inventory_item.inventory:
+				inventory_item.move_inventory_coords_to_location(x, y)
 			
 	def establish_properties(self):
 		
@@ -949,6 +1049,7 @@ class Object:
 		self.previous_blocks_sightline = self.blocks_sightline
 		self.previous_foreground_colour = self.foreground_colour
 		self.previous_name = self.name
+		self.previous_light_radius = self.light_radius
 
 		return True
 		
@@ -984,22 +1085,33 @@ class Object:
 			return False
 		
 		metric = None
+		if task == 'Drag' or task == 'Lift' or task == 'Throw':
+			if task == 'Drag':
+				metric = self.unit.drag_weight
+			elif task == 'Lift':
+				metric = self.unit.lift_weight
+			elif task == 'Throw':
+				metric = self.unit.throw_weight
+			
+			if object.weight > metric:
+				return False
 		
-		if task == 'Drag':
-			metric = self.unit.drag_weight
-		elif task == 'Lift':
-			metric = self.unit.lift_weight
-		elif task == 'Throw':
-			metric = self.unit.throw_weight
+		elif task == 'Open / Close':
+			if not object.functions_as_door:
+				return False
+		elif task == 'Lock / Unlock':
+			if not object.functions_as_lock:
+				return False
+		elif task == 'Activate / Deactivate':
+			if not object.functions_on_off:
+				return False
 		else:
 			print 'spelling error: ' + task
 			return False
-			
-		if object.weight > metric:
-			return False
+
 			
 		return True
-		
+			
 
 	def move(self, dx, dy, force_success = False):
 		global map
@@ -1034,7 +1146,6 @@ class Object:
 				self.unit.turn_taken = True
 
 			if move_held_object_check_success:
-				move_sound.play()
 				self.unit.holding.move(dx, dy)
 			else:
 				if self.unit:
@@ -1242,9 +1353,12 @@ class Object:
 		self.char = '='
 		self.foreground_colour = libtcod.dark_orange
 		self.name = 'Broken ' + self.name
-
+		
+		if self.functions_on_off:
+			self.toggle_on_off(self, force_state = 'Off')
+			
 		self.destroyed = True
-
+		
 		if self.unit:
 			if self.unit.the_thing:
 				list_of_things.remove(self)
@@ -1519,7 +1633,7 @@ def astar_obstacle_function(xFrom, yFrom, xTo, yTo, object_moving):
 				
 					# Only humans and things can open doors
 					if object_moving.unit.creature_type == 'Humanoid' or object_moving.unit.the_thing:
-						if obj.functions_as_door:
+						if obj.functions_as_door and obj.open_closed_state == 'Closed':
 							object_moving.how_should_I_proceed = 'Open Door'
 							object_moving.what_object_should_I_interact_with = blocking_object
 							return difficulty_of_move
@@ -1868,12 +1982,12 @@ class Unit:
 		if self.the_thing:
 		
 			# he sees through walls he has the sense
-			nearby_units = self.get_nearest_objects(range = TORCH_RADIUS, type = 'Units', see_through_walls = True)
+			nearby_units = self.get_nearest_objects(range = MAX_VISIBILITY_RADIUS, type = 'Units', see_through_walls = True)
 			
 			# This is probably time consuming but also really cool (potentially a lot of FOV computations)
 			for potential_target in nearby_units:
 			
-				other_units_nearby = potential_target.unit.get_nearest_objects(range = TORCH_RADIUS, type = 'Units', maximum_results = 2, sort_by_distance = False)
+				other_units_nearby = potential_target.unit.get_nearest_objects(range = MAX_VISIBILITY_RADIUS, type = 'Units', maximum_results = 2, sort_by_distance = False)
 				
 				# Don't count The Thing itself when looking for threats
 				if self.owner in other_units_nearby:
@@ -1889,7 +2003,7 @@ class Unit:
 			
 			# The Thing will flee if too many units nearby
 			if self.the_thing_revealed:
-				units_that_see_me = self.get_nearest_objects(range = TORCH_RADIUS, type = 'Units', maximum_results = 1, sort_by_distance = False, see_through_walls = False)
+				units_that_see_me = self.get_nearest_objects(range = MAX_VISIBILITY_RADIUS, type = 'Units', maximum_results = 1, sort_by_distance = False, see_through_walls = False)
 				if len(units_that_see_me) == 0:
 					self.reassimilate()
 					
@@ -1901,25 +2015,25 @@ class Unit:
 
 		if not chosen_object_or_room:
 			if chosen_task == 'Move to Object':
-				nearest_objects_or_rooms = self.get_nearest_objects(range = TORCH_RADIUS, type = 'Non Affixed Objects')
+				nearest_objects_or_rooms = self.get_nearest_objects(range = MAX_VISIBILITY_RADIUS, type = 'Non Affixed Objects')
 			elif chosen_task == 'Move to Room':
 				for potential_room in rooms:
 					(center_x, center_y) = potential_room.center()
 					potential_room_center_tile = map[center_x][center_y]
-					if potential_room_center_tile.distance_to(self.owner) <= (TORCH_RADIUS * 2):
+					if potential_room_center_tile.distance_to(self.owner) <= (MAX_VISIBILITY_RADIUS * 2):
 						nearest_objects_or_rooms.append(potential_room_center_tile)
 
 			elif chosen_task == 'Deliver Message to Object':
-				nearest_objects_or_rooms = self.get_nearest_objects(range = TORCH_RADIUS, type = 'Units')
+				nearest_objects_or_rooms = self.get_nearest_objects(range = MAX_VISIBILITY_RADIUS, type = 'Units')
 			elif chosen_task == 'Attack Object':
-				nearest_objects_or_rooms = self.get_nearest_objects(range = TORCH_RADIUS, type = 'Units')
+				nearest_objects_or_rooms = self.get_nearest_objects(range = MAX_VISIBILITY_RADIUS, type = 'Units')
 			elif chosen_task == 'Examine Object':
-				nearest_objects_or_rooms = self.get_nearest_objects(range = TORCH_RADIUS, type = 'Units')
+				nearest_objects_or_rooms = self.get_nearest_objects(range = MAX_VISIBILITY_RADIUS, type = 'Units')
 
 			chosen_object_or_room = pick_random(nearest_objects_or_rooms)
 				
 		if chosen_object_or_room:
-			final_task = Task(task_owner = self.owner, task_type = chosen_task, object_source_of_task = self.owner, object_moving_to = chosen_object_or_room, object_to_interact_with = chosen_object_or_room, search_range = TORCH_RADIUS, max_turns_allocated = max_turns_allocated, task_message_ID = task_message_ID, quantity = None)
+			final_task = Task(task_owner = self.owner, task_type = chosen_task, object_source_of_task = self.owner, object_moving_to = chosen_object_or_room, object_to_interact_with = chosen_object_or_room, search_range = MAX_VISIBILITY_RADIUS, max_turns_allocated = max_turns_allocated, task_message_ID = task_message_ID, quantity = None)
 			if test:
 				return final_task
 			self.owner.task_queue.append(final_task)
@@ -1949,7 +2063,7 @@ class Unit:
 			
 		if self.the_thing:
 			if target_object_or_tile.unit:
-				other_units_nearby = target_object.unit.get_nearest_objects(range = TORCH_RADIUS, type = 'Units', maximum_results = 2, sort_by_distance = False)
+				other_units_nearby = target_object.unit.get_nearest_objects(range = MAX_VISIBILITY_RADIUS, type = 'Units', maximum_results = 2, sort_by_distance = False)
 				if self.owner in other_units_nearby:
 					other_units_nearby.remove(self.owner)	
 				if len(other_units_nearby) >= 2:
@@ -2025,8 +2139,8 @@ class Unit:
 			Message('Cant speak to an inanimate object.', 'Narrator', relevant_objects=[self.owner, spoken_to_object])
 			return False
 
-		nearest_objects = spoken_to_object.unit.get_nearest_objects(range=TORCH_RADIUS, type='Non Affixed Objects', maximum_results = 26)
-		nearest_units = spoken_to_object.unit.get_nearest_objects(range = TORCH_RADIUS, type='Units', maximum_results = 26)
+		nearest_objects = spoken_to_object.unit.get_nearest_objects(range = MAX_VISIBILITY_RADIUS, type='Non Affixed Objects', maximum_results = 26)
+		nearest_units = spoken_to_object.unit.get_nearest_objects(range = MAX_VISIBILITY_RADIUS, type='Units', maximum_results = 26)
 
 		object_moving_to = None
 		object_to_interact_with = None
@@ -2083,7 +2197,7 @@ class Unit:
 				spoken_to_object.unit.speak_to(player, given_dialogue = None, given_dialogue_ID = spoken_to_object.unit.backstory_dialogue)
 				return True
 
-			spoken_to_object.task_queue.append(Task(task_owner=spoken_to_object, task_type=chosen_response, object_source_of_task=object_source_of_task, object_moving_to=object_moving_to, object_to_interact_with=object_to_interact_with, search_range=TORCH_RADIUS, task_message_ID=task_message_ID, quantity = quantity))
+			spoken_to_object.task_queue.append(Task(task_owner=spoken_to_object, task_type=chosen_response, object_source_of_task=object_source_of_task, object_moving_to=object_moving_to, object_to_interact_with=object_to_interact_with, search_range=MAX_VISIBILITY_RADIUS, task_message_ID=task_message_ID, quantity = quantity))
 			return True
 
 		return False
@@ -2149,12 +2263,12 @@ class Unit:
 					if response_ID in this_dialogue_object.task_based_on_responses:
 						given_task = this_dialogue_object.task_based_on_responses[response_ID]
 						if given_task:
-							self.owner.task_queue.append(Task(task_owner = self.owner, task_type = given_task[0], object_source_of_task = spoken_to_object, object_moving_to = given_task[1], object_to_interact_with = given_task[1], search_range = TORCH_RADIUS))
+							self.owner.task_queue.append(Task(task_owner = self.owner, task_type = given_task[0], object_source_of_task = spoken_to_object, object_moving_to = given_task[1], object_to_interact_with = given_task[1], search_range = MAX_VISIBILITY_RADIUS))
 							if ACTIVATE_FUNCTION_TIMERS: end_test(speak_timer, self.owner.name + ' final nested reply')
 														   
 							
 
-	def get_nearest_objects(self, range = TORCH_RADIUS, type = None, maximum_results = None, sort_by_distance = True, see_through_walls = False):
+	def get_nearest_objects(self, range, type = None, maximum_results = None, sort_by_distance = True, see_through_walls = False):
 		global units, affixed_objects, non_affixed_objects, fov_map
 
 		if not type:
@@ -2509,7 +2623,7 @@ def try_to_stack(list_of_objects, new_object):
 
 
 def place_object_at_location(object_to_place, x, y, stack_objects_allowed = True, force_placement_success = False):
-	global map, affixed_objects, non_affixed_objects, units, temporary_obstacles
+	global map, affixed_objects, non_affixed_objects, units, temporary_obstacles, light_sources
 
 	remove_all_connections_to_object(object_to_place)
 	
@@ -2540,6 +2654,9 @@ def place_object_at_location(object_to_place, x, y, stack_objects_allowed = True
 	
 	if object_to_place.name == 'Generic Humanoid Obstacle' or object_to_place.name == 'Generic Wall Obstacle':
 		temporary_obstacles.append(object_to_place)
+		
+	if object_to_place.light_source:
+		light_sources.append(object_to_place)
 	
 	if object_to_place.unit:
 		units.append(object_to_place)
@@ -2552,11 +2669,13 @@ def place_object_at_location(object_to_place, x, y, stack_objects_allowed = True
 		
 	map[x][y].objects_on_this_tile.append(object_to_place)
 	
+	object_to_place.move_inventory_coords_to_location(x, y)
+	
 	return object_to_place
 
 
 def remove_all_connections_to_object(object_to_remove):
-	global map, affixed_objects, non_affixed_objects, units
+	global map, affixed_objects, non_affixed_objects, units, light_sources
 	
 	object_to_remove.held_by = None
 
@@ -2571,6 +2690,9 @@ def remove_all_connections_to_object(object_to_remove):
 	elif object_to_remove in map[object_to_remove.x][object_to_remove.y].objects_on_this_tile:
 		
 		map[object_to_remove.x][object_to_remove.y].objects_on_this_tile.remove(object_to_remove)
+		
+		if object_to_remove in light_sources:
+			light_sources.remove(object_to_remove)
 	
 		if object_to_remove.unit:
 			units.remove(object_to_remove)
@@ -2683,6 +2805,8 @@ def process_action(action_being_taken, object_taking_action=None, object_being_a
 		return object_taking_action.unit.player_speak_to(object_being_targeted)
 	elif action_being_taken == 'Examine':
 		return object_taking_action.unit.examine(object_being_targeted)
+	elif action_being_taken == 'Activate / Deactivate':
+		return object_taking_action.toggle_on_off(object_being_targeted)
 	return False
 
 
@@ -3031,6 +3155,8 @@ def render_all():
 	global map
 	global message_scroll_button
 	global message_scroll_state
+	global light_source_fov_maps
+	global light_sources
 	
 	if not player: libtcod.console_clear(con)
 
@@ -3039,9 +3165,43 @@ def render_all():
 		initialize_fov()
 		fov_recompute = False
 		
-		libtcod.map_compute_fov(fov_map, player.x, player.y, TORCH_RADIUS, FOV_LIGHT_WALLS, FOV_ALGO)
+		for y in range(MAP_HEIGHT):
+			for x in range(MAP_WIDTH):
+				map[x][y].illuminated = False
+				map[x][y].illuminated_left = False
+				map[x][y].illuminated_down = False
+				map[x][y].illuminated_right = False
+				map[x][y].illuminated_up = False
+		
+		
+		
+		for light_source in light_sources:
+			if light_source.distance_to(player) <= MAX_VISIBILITY_RADIUS + light_source.light_radius:
+				libtcod.map_compute_fov(fov_map, light_source.x, light_source.y, light_source.light_radius, FOV_LIGHT_WALLS, FOV_ALGO)
 
-		# go through all tiles, and set their background foreground_colour according to the FOV
+				for y in range(normalize_to_map_height(light_source.y - light_source.light_radius), normalize_to_map_height(light_source.y + light_source.light_radius)):
+					for x in range(normalize_to_map_width(light_source.x - light_source.light_radius), normalize_to_map_width(light_source.x + light_source.light_radius)):
+						visible = libtcod.map_is_in_fov(fov_map, x, y)
+						if visible:
+
+							map[x][y].illuminated = True
+
+							if len(map[x][y].objects_on_this_tile) > 0:
+								if map[x][y].check_blocks_sight():
+									right_blocked = map[x + 1][y].check_blocks_sight()
+									down_blocked = map[x][y + 1].check_blocks_sight()
+									left_blocked = map[x - 1][y].check_blocks_sight()
+									up_blocked = map[x][y - 1].check_blocks_sight()
+									
+									map[x][y].illuminated = False
+									if light_source.x > x and not right_blocked: map[x][y].illuminated_right = True
+									if light_source.y > y and not down_blocked: map[x][y].illuminated_down = True
+									if light_source.x < x and not left_blocked: map[x][y].illuminated_left = True
+									if light_source.y < y and not up_blocked: map[x][y].illuminated_up = True
+
+						
+		libtcod.map_compute_fov(fov_map, player.x, player.y, MAX_VISIBILITY_RADIUS, FOV_LIGHT_WALLS, FOV_ALGO)
+			
 		for y in range(MAP_HEIGHT):
 			for x in range(MAP_WIDTH):
 				map[x][y].render_me()
@@ -3088,6 +3248,7 @@ def render_all():
 		libtcod.console_print_ex(panel, 1, 16, libtcod.BKGND_NONE, libtcod.LEFT, 'Open/Close: R')
 		libtcod.console_print_ex(panel, 1, 17, libtcod.BKGND_NONE, libtcod.LEFT, 'Pick Up: F')
 		libtcod.console_print_ex(panel, 1, 18, libtcod.BKGND_NONE, libtcod.LEFT, 'Lock/Unlock: C')
+		libtcod.console_print_ex(panel, 1, 16, libtcod.BKGND_NONE, libtcod.LEFT, 'Activate/Deactivate: V')
 		
 		if ACTIVATE_FUNCTION_TIMERS: game_message = start_test()
 			
@@ -3294,7 +3455,7 @@ def menu(header, main_dialogue, options, clear_window_after_display=True):
 			highlight_option = None
 
 		if mouse.rbutton_pressed:
-			return False
+			return None
 
 		libtcod.console_delete(window)
 
@@ -3338,8 +3499,14 @@ def handle_mouse():
 		message_scroll_button = None
 
 	if (mouse.lbutton_pressed):
-
-
+		if MORE_ERROR_LOGGING:
+			print '---'
+			print 'illu ' + str(map[x][y].illuminated)
+			print 'up ' + str(map[x][y].illuminated_up)
+			print 'down ' + str(map[x][y].illuminated_down)
+			print 'right ' + str(map[x][y].illuminated_right)
+			print 'left ' + str(map[x][y].illuminated_left)
+			print '---'
 
 		if y > MAP_HEIGHT and y < SCREEN_HEIGHT and x > OBJECT_INFO_BAR_WIDTH and x < SCREEN_WIDTH:
 			# game_msgs
@@ -3369,7 +3536,7 @@ def handle_mouse():
 					return False
 
 				# If you do click an object, another context menu appears to decide what to do with it
-				action_options = ['Attack', 'Pick Up', 'Grab', 'Release', 'Open / Close', 'Lock / Unlock', 'Give Object', 'Take Object', 'Throw', 'Equip', 'Speak', 'Examine']
+				action_options = ['Attack', 'Pick Up', 'Grab', 'Release', 'Open / Close', 'Lock / Unlock', 'Give Object', 'Take Object', 'Throw', 'Equip', 'Speak', 'Examine', 'Activate / Deactivate']
 				chosen_action = menu(selected_object.name, None, action_options)
 
 				if player.distance_to(selected_object) > DISTANCE_TO_INTERACT:
@@ -3418,7 +3585,7 @@ def handle_keyboard():
 		move_success = player.move(1, 0)
 		if not move_success:
 			return player.unit.try_to_manoeuvre(1, 0)
-	elif key_char == 'f' or key_char == 'F' or key_char == 'r' or key_char == 'R' or key_char == 'e' or key_char == 'E' or key_char == 'c' or key_char == 'C':
+	elif key_char == 'f' or key_char == 'F' or key_char == 'r' or key_char == 'R' or key_char == 'e' or key_char == 'E' or key_char == 'c' or key_char == 'C' or key_char == 'v' or key_char == 'V':
 		
 		if key_char == 'e' or key_char == 'E':
 			if player.unit.holding:
@@ -3430,6 +3597,8 @@ def handle_keyboard():
 		
 		objects_to_remove = []
 		
+		
+		# covers the context sensitive keypresses
 		for object in adjacent_objects:
 			if key_char == 'e' or key_char == 'E':
 				if not player.can_i_perform_task(object, 'Drag'):
@@ -3439,20 +3608,23 @@ def handle_keyboard():
 					objects_to_remove.append(object)
 				elif object.unit:
 					objects_to_remove.append(object)
+			elif key_char == 'r' or key_char == 'R':
+				if not player.can_i_perform_task(object, 'Open / Close'):
+					objects_to_remove.append(object)
+			elif key_char == 'c' or key_char == 'C':
+				if not player.can_i_perform_task(object, 'Lock / Unlock'):
+					objects_to_remove.append(object)
+			elif key_char == 'v' or key_char == 'V':
+				if not player.can_i_perform_task(object, 'Activate / Deactivate'):
+					objects_to_remove.append(object)
 			else:
 				break
 				
+				
 		for object in objects_to_remove:
 			adjacent_objects.remove(object)
-		
-		
-		
-		if key_char == 'r' or key_char == 'R':
-			updated_adjacent_objects = [door for door in adjacent_objects if door.functions_as_door]
-			adjacent_objects = updated_adjacent_objects
 
 		if adjacent_objects:
-			
 			if len(adjacent_objects) > 1:
 				selected_object = prompt_to_choose_object(adjacent_objects)
 			else:
@@ -3472,6 +3644,9 @@ def handle_keyboard():
 					
 				elif key_char == 'c' or key_char == 'C':
 					return player.lock_unlock(selected_object)
+					
+				elif key_char == 'v' or key_char == 'V':
+					return player.toggle_on_off(selected_object)
 					
 				elif key_char == 'e' or key_char == 'E':
 					quantity = prompt_for_quantity(selected_object)
@@ -3598,6 +3773,24 @@ def target_tile(return_object_if_possible = False, max_range = None):
 				
 				return map[x][y]
 				
+def toggle_main_power(force_state = None):
+	global light_sources, main_power_on
+	
+	if main_power_on == True:
+		main_power_on = False
+	else:
+		main_power_on = True
+	
+	for light_source in light_sources:
+		if light_source.name == 'Lamp':
+			if main_power_on:
+				light_source.light_radius = light_source.previous_light_radius
+			else:
+				light_source.light_radius = 0
+	
+		
+	
+				
 def reset_everything():
 	global map
 	global affixed_objects
@@ -3616,6 +3809,9 @@ def reset_everything():
 	global temporary_obstacles
 	global lab_rooms
 	global lab_rooms_original
+	global light_sources
+	global light_source_fov_maps
+	global main_power_on
 	
 	map = []
 	affixed_objects = []
@@ -3633,6 +3829,9 @@ def reset_everything():
 	message_scroll_state = 0
 	temporary_obstacles = []
 	lab_rooms = list(lab_rooms_original)
+	light_sources = []
+	light_source_fov_maps = []
+	main_power_on = True
 
 
 def new_game():
@@ -3651,17 +3850,14 @@ def new_game():
 	global message_scroll_button
 	global message_scroll_state
 	global temporary_obstacles
+	global light_sources
+	global main_power_on
 	
 	reset_everything()
 
 	# create object representing the player
 	
-	player = get_predesigned_object_by_name('Humanoid')
-	player.foreground_colour = libtcod.white
-	player.name = 'Player'
-	player.description = "Hello I'm the player."
-	player.unit = Unit()
-	player.establish_properties()
+	player = get_object_by_name('Player')
 
 	# generate map (at this point it's not drawn to the screen)
 	make_map()
@@ -3797,6 +3993,11 @@ def play_game():
 		
 	for i in range(1, 25):
 		blah = get_object_by_name('Locker')
+		random_place_object(blah)
+		
+		
+	for i in range(1, 15):
+		blah = get_object_by_name('Lamp')
 		random_place_object(blah)
 	"""	
 	for i in range(1, 15):
@@ -3949,14 +4150,15 @@ def play_game():
 							burning_tile.char = '.'
 							
 					if ACTIVATE_FUNCTION_TIMERS: end_test(time_variable, 'handling burning stuff')
-
-				if not chosen_thing and num_turns > NUMBER_OF_TURNS_UNTIL_THE_THING:
-					thing_candidates = []
-					for obj in units:
-						if not obj == player:
-							thing_candidates.append(obj)
-					chosen_thing = thing_candidates[libtcod.random_get_int(0, 0, (len(thing_candidates) - 1))]
-					chosen_thing.unit.become_the_thing()
+				
+				if not DISABLE_THE_THING:
+					if not chosen_thing and num_turns > NUMBER_OF_TURNS_UNTIL_THE_THING:
+						thing_candidates = []
+						for obj in units:
+							if not obj == player:
+								thing_candidates.append(obj)
+						chosen_thing = thing_candidates[libtcod.random_get_int(0, 0, (len(thing_candidates) - 1))]
+						chosen_thing.unit.become_the_thing()
 		
 		if ACTIVATE_FUNCTION_TIMERS: end_test(main_loop_time, '(loop) main loop')
 		
@@ -3971,6 +4173,7 @@ def initialize_sounds():
 	global door_sound
 	global menu_click_sound
 	global key_unlock_sound
+	global activate_sound
 	
 	impact_sound = pygame.mixer.Sound('thing_sounds/impact.wav')
 	gun_sound = pygame.mixer.Sound('thing_sounds/gun.wav')
@@ -3981,19 +4184,26 @@ def initialize_sounds():
 	door_sound = pygame.mixer.Sound('thing_sounds/door.wav')
 	menu_click_sound = pygame.mixer.Sound('thing_sounds/menu_click.wav')
 	key_unlock_sound = pygame.mixer.Sound('thing_sounds/key_unlock.wav')
+	activate_sound = pygame.mixer.Sound('thing_sounds/activate.wav')
 	
 def end_game_return_to_main_menu():
 	global game_state
 	game_state = None
 	reset_everything()
 	render_all()
-	pygame.mixer.music.stop()
+	play_music(None)
 	return True
 	
-
+	
+def play_music(music_file):
+	if not music_file:
+		pygame.mixer.music.stop()
+	else:
+		pygame.mixer.music.load('thing_sounds/' + music_file)
+		pygame.mixer.music.play(-1)
 
 def main_menu():
-	global SHOW_ALL, HEAR_ALL, PLAY_MUSIC, fov_recompute
+	global SHOW_ALL, HEAR_ALL, PLAY_MUSIC, DISABLE_THE_THING, fov_recompute
 	fov_recompute = False
 	img = libtcod.image_load('menu_background.png')
 
@@ -4014,15 +4224,14 @@ def main_menu():
 		libtcod.console_print_ex(0, SCREEN_WIDTH / 2 + 2, SCREEN_HEIGHT / 2 - 4 + 2, libtcod.BKGND_NONE, libtcod.CENTER, 'TENTACLE JAZZHANDS')
 	
 		# show options and wait for the player's choice
-		choice = menu('THE THING', get_dialogue_by_ID(307), ['Play a new game', 'Show Full Map [' + str(SHOW_ALL) + ']', 'Show All Messages [' + str(HEAR_ALL) + ']', 'Play Music [' + str(PLAY_MUSIC) + ']', 'Quit'], clear_window_after_display=False)
+		choice = menu('THE THING', get_dialogue_by_ID(307), ['Play a new game', 'Show Full Map [' + str(SHOW_ALL) + ']', 'Show All Messages [' + str(HEAR_ALL) + ']', 'Play Music [' + str(PLAY_MUSIC) + ']', 'Disable The Thing [' + str(DISABLE_THE_THING) + ']', 'Quit'], clear_window_after_display=False)
 	
 		if choice == 0:  # new game
 			if PLAY_MUSIC:
 				if easter_egg < 4:
-					pygame.mixer.music.load('thing_sounds/music.ogg')
+					play_music('music.ogg')
 				else:
-					pygame.mixer.music.load('thing_sounds/music_2.ogg')
-				pygame.mixer.music.play(-1)
+					play_music('music_2.ogg')
 			new_game()
 			play_game()
 		elif choice == 1:
@@ -4041,7 +4250,12 @@ def main_menu():
 			else:
 				PLAY_MUSIC = True
 			easter_egg += 1
-		elif choice == 4:  # quit
+		elif choice == 4: 
+			if DISABLE_THE_THING:
+				DISABLE_THE_THING = False
+			else:
+				DISABLE_THE_THING = True
+		elif choice == 5:  # quit
 			sys.exit()
 				
 
@@ -4117,6 +4331,24 @@ def get_room_type_by_name(room_type_name):
 		this_room.objects_in_room.append({
 			'object_or_group': 'Object',
 			'name_of_object_or_group': 'Filing Cabinet',
+			'minimum_quantity': 1,
+			'maximum_quantity': 1})
+			
+		this_room.objects_in_room.append({
+			'object_or_group': 'Object',
+			'name_of_object_or_group': 'Radio',
+			'minimum_quantity': 1,
+			'maximum_quantity': 1})
+			
+		this_room.objects_in_room.append({
+			'object_or_group': 'Object',
+			'name_of_object_or_group': 'Generator',
+			'minimum_quantity': 1,
+			'maximum_quantity': 1})
+			
+		this_room.objects_in_room.append({
+			'object_or_group': 'Object',
+			'name_of_object_or_group': 'Flashlight',
 			'minimum_quantity': 1,
 			'maximum_quantity': 1})
 
@@ -4431,6 +4663,80 @@ def get_object_by_name(object_name):
 		if percentage_chance(25): this_object.inventory.append('Flame Tank')
 		if percentage_chance(25): this_object.inventory.append('Rocket')
 		
+	elif object_name == 'Radio':
+		this_object = get_predesigned_object_by_name('Generic Object')
+		this_object.char = 'R'
+		this_object.size = 0.5
+		this_object.material = 'Metal'
+		this_object.foreground_colour = libtcod.brass
+		this_object.description = "Macready's radio.  Big BTO fan."
+		
+		this_object.functions_on_off = True
+		this_object.on_off_state = 'Off'
+		
+		this_object.on_function = play_music
+		this_object.on_argument = ('bto.ogg')
+		
+		this_object.off_function = play_music
+		this_object.off_argument = None
+		
+	elif object_name == 'Generator':
+		this_object = get_predesigned_object_by_name('Generic Object')
+		this_object.char = 'G'
+		this_object.size = 1
+		this_object.material = 'Glass'
+		this_object.foreground_colour = libtcod.grey
+		this_object.description = "Powers the lights in the facility."
+		
+		this_object.functions_on_off = True
+		this_object.on_off_state = 'On'
+		
+		this_object.on_function = toggle_main_power
+		this_object.on_argument = 'On'
+		
+		this_object.off_function = toggle_main_power
+		this_object.off_argument = 'Off'
+		
+	elif object_name == 'Lamp':
+		this_object = get_predesigned_object_by_name('Generic Object')
+		this_object.char = 'M'
+		this_object.size = 1
+		this_object.material = 'Glass'
+		this_object.foreground_colour = libtcod.dark_yellow
+		this_object.description = "A lamp."
+		
+		this_object.functions_on_off = True
+		this_object.on_off_state = 'On'
+		
+		this_object.light_source = True
+		this_object.light_radius = 8
+		
+		this_object.on_function = this_object.adjust_light_radius
+		this_object.on_argument = 8
+		
+		this_object.off_function = this_object.adjust_light_radius
+		this_object.off_argument = 0
+		
+	elif object_name == 'Flashlight':
+		this_object = get_predesigned_object_by_name('Generic Object')
+		this_object.char = 'f'
+		this_object.size = 0.5
+		this_object.material = 'Plastic'
+		this_object.foreground_colour = libtcod.dark_yellow
+		this_object.description = "A flashlight."
+		
+		this_object.functions_on_off = True
+		this_object.on_off_state = 'Off'
+		
+		this_object.light_source = True
+		this_object.light_radius = 0
+		
+		this_object.on_function = this_object.adjust_light_radius
+		this_object.on_argument = 15
+		
+		this_object.off_function = this_object.adjust_light_radius
+		this_object.off_argument = 0
+		
 	elif object_name == 'Pool Table':
 		this_object = get_predesigned_object_by_name('Generic Object')
 		this_object.char = 'P'
@@ -4448,6 +4754,15 @@ def get_object_by_name(object_name):
 		this_object.description = "Super fun."
 
 	# UNITS BELOW THIS LINE
+	
+
+	elif object_name == 'Player':
+		this_object = get_predesigned_object_by_name('Humanoid')
+		this_object.foreground_colour = libtcod.white
+		this_object.description = "Player"
+		this_object.unit = get_unit_by_name('Scientist')
+		this_object.light_source = True
+		this_object.light_radius = 5
 
 	elif object_name == 'Scientist':
 		this_object = get_predesigned_object_by_name('Humanoid')
@@ -4724,7 +5039,7 @@ def get_material_stats_by_name(material_name, stat_requested):
 
 class Task:
 	# a tile of the map and its properties
-	def __init__(self, task_owner, task_type, object_source_of_task=None, object_moving_to=None, object_to_interact_with=None, search_range=TORCH_RADIUS, max_turns_allocated = TOTAL_MAX_TURNS_PER_TASK, task_message_ID=None, quantity = None):
+	def __init__(self, task_owner, task_type, object_source_of_task=None, object_moving_to=None, object_to_interact_with=None, search_range = None, max_turns_allocated = TOTAL_MAX_TURNS_PER_TASK, task_message_ID=None, quantity = None):
 
 		self.owner = task_owner
 		
@@ -4781,6 +5096,7 @@ class Task:
 		return True
 	
 	def run_task(self):
+		global light_radius
 		if ACTIVATE_FUNCTION_TIMERS: this_section = start_test()
 	
 		if self.queue_task_end:
@@ -4837,7 +5153,7 @@ class Task:
 						object_source_of_task = self.object_source_of_task, 
 						object_moving_to = self.object_source_of_task, 
 						object_to_interact_with = None, 
-						search_range = TORCH_RADIUS, 
+						search_range = MAX_VISIBILITY_RADIUS, 
 						task_message_ID = 101, 
 						quantity = None))
 					
@@ -4851,7 +5167,7 @@ class Task:
 						object_source_of_task = self.object_source_of_task, 
 						object_moving_to = self.object_source_of_task, 
 						object_to_interact_with = picked_up_object, 
-						search_range = TORCH_RADIUS, 
+						search_range = MAX_VISIBILITY_RADIUS, 
 						task_message_ID = None, 
 						quantity = self.quantity))
 					
