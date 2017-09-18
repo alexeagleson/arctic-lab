@@ -3,6 +3,8 @@
 # libtcod python tutorial
 #
 
+# arctic-lab-testing@hotmail.com
+# testing123
 
 # https://alexeagleson.wixsite.com/thething
 
@@ -452,12 +454,27 @@
 # Main generator now properly controls all lamps, as well as the radio
 # Objects that were off before shutting down main power will stay off, objects that were on will turn back on
 
+# v0.15.0
+# Added info to object descriptions to show their state (items with locks will show (Locked) or (Unlocked), lamps will show (On) / (Off) etc.
+
+# v0.15.1
+# Can now attack by clicking the right mouse button
+# Radio functions more like a radio -- music still plays when radio is off, and will resume at a later time in the song when turned back on
+# Main power being shut off now dramatically reduces the player's natrual light radius -- encouraging the use of flashlights
+
+# v0.15.2
+# Implemented directional lighting - flashlights now shine a directional beam that moves with the direction you move when you are carrying it
+# New 'X' hotkey will lock your movement, so that you can shine the flashlight around the room without moving or using up your turn
+
+# v0.15.3
+# 
+
 
 #TO DO:
 
+# console info tooltip?
+# attack should make a different sound if it does damage
 
-
-# show left/right and on/off in items description
 # refactor object placement system
 # AI improvements - pick up objects for a reason
 # feelings / suspicion system
@@ -712,15 +729,15 @@ class Tile:
 	def angle_to(self, other):
 		dx = other.x - self.x
 		dy = other.y - self.y
-		if abs(dx) > abs(dy):
-			if dx > 0:
+		if abs(dx) >= abs(dy):
+			if dx >= 0:
 				return 'Right'
 			elif dx < 0:
 				return 'Left'
-		else:
-			if dy > 0:
+		elif abs(dx) < abs(dy):
+			if dy >= 0:
 				return 'Down'
-			if dy > 0:
+			elif dy < 0:
 				return 'Up'
 		
 	def check_blocks_sight(self):
@@ -905,6 +922,10 @@ class Object:
 		self.temp_value = temp_value
 
 		self.description = description
+		
+		self.direction = 'Left'
+		
+		self.movement_locked = False
 
 		self.unit = unit
 		if self.unit:  # let the unit component know who owns it
@@ -937,6 +958,7 @@ class Object:
 		self.what_object_should_I_interact_with = None
 		
 		self.light_source = False
+		self.light_source_direction = None
 		self.light_radius = None
 		
 		self.on_function = None
@@ -967,14 +989,15 @@ class Object:
 		if object_to_toggle.on_off_state == 'On':
 			object_to_toggle.on_off_state = 'Off'
 			object_to_toggle.off_function(object_to_toggle.off_argument)
-		else:
+			
+		elif object_to_toggle.on_off_state == 'Off':
 			object_to_toggle.on_off_state = 'On'
 			if object_to_toggle.attached_to_main_power and not main_power_on:
 				Message(object_to_toggle.name + ' has no power.', 'Narrator', relevant_objects = [self, object_to_toggle])
-				return False
-			object_to_toggle.on_function(object_to_toggle.on_argument)
-			
-		activate_sound.play()
+			else:
+				object_to_toggle.on_function(object_to_toggle.on_argument)
+				activate_sound.play()
+				
 		return True
 		
 		
@@ -1046,6 +1069,10 @@ class Object:
 			self.unit.update_strength(self.unit.strength)
 			
 			self.unit.generate_appendages()
+		
+		# Equip yourright arm as a weapon by default
+		if self.unit:
+			self.equipped = self.unit.rarm
 			
 		if self.stackable:
 			self.allow_inventory = False
@@ -1121,6 +1148,16 @@ class Object:
 
 	def move(self, dx, dy, force_success = False):
 		global map
+		
+		new_angle = map[self.x][self.y].angle_to(map[self.x + dx][self.y + dy])
+		self.direction = new_angle
+		if self.unit:
+			if self.unit.holding:
+				self.unit.holding.direction = new_angle
+		
+		if self.movement_locked:
+			Message(self.name + ' movement locked.  Press x to resume.', 'Narrator', relevant_objects = [self])
+			return True
 
 		test_x = -1
 		test_y = -1
@@ -1144,6 +1181,8 @@ class Object:
 
 			new_x = self.x + dx
 			new_y = self.y + dy
+			
+			
 
 			remove_all_connections_to_object(self)
 			place_object_at_location(self, new_x, new_y, stack_objects_allowed = False, force_placement_success = True)
@@ -1402,11 +1441,11 @@ class Object:
 				place_object_at_location(appendage, self.x, self.y, stack_objects_allowed = False, force_placement_success = True)
 				process_projectile(self.internal_kinetic_energy, appendage)
 				
-				
-			if player.destroyed:
-				Message('Player has been killed.', 'Narrator', relevant_objects = None)
-				render_all()
+			if self == player:
+				menu('Player has been killed', None, ['Ok'], clear_window_after_display = False)
+				end_game_return_to_main_menu()
 				return True
+
 				
 			remove_all_connections_to_object(self)
 			
@@ -1417,7 +1456,7 @@ class Object:
 					pass
 				else:
 					end_game_return_to_main_menu()
-					
+						
 			del self
 		
 		return True
@@ -1606,6 +1645,8 @@ def process_projectile(energy_force, projectile_object, specific_target_object_o
 		
 		destination_tile_x = normalize_to_map_width(projectile_object.x + dx)
 		destination_tile_y = normalize_to_map_height(projectile_object.y + dy)
+		
+		specific_target_object_or_tile = map[destination_tile_x][destination_tile_y]
 	
 	this_moving_object = Projectile_In_Motion(projectile_object, specific_target_object_or_tile, velocity, accuracy_modifier, pass_through_object, destination_tile_x, destination_tile_y)
 	
@@ -2075,9 +2116,6 @@ class Unit:
 				if len(other_units_nearby) >= 2:
 					self.owner.cancel_all_tasks()
 					return False
-			
-		if not self.owner.equipped:
-			self.owner.equipped = self.owner.unit.rarm
 		
 		if test:
 			test_damage = 0
@@ -2407,6 +2445,13 @@ class Unit:
 		return True
 
 	def equip(self, equipped_object):
+	
+		# Unequip
+		if self.owner.equipped == equipped_object:
+			self.owner.equipped.equipped_to = None
+			self.owner.equipped = self.owner.unit.rarm
+			return True
+			
 		if equipped_object in self.owner.inventory:
 			self.owner.equipped = equipped_object
 			equipped_object.equipped_to = self.owner
@@ -2682,7 +2727,7 @@ def place_object_at_location(object_to_place, x, y, stack_objects_allowed = True
 
 def remove_all_connections_to_object(object_to_remove):
 	global map, affixed_objects, non_affixed_objects, units, light_sources
-	
+
 	object_to_remove.held_by = None
 
 	if object_to_remove.equipped_to:
@@ -3171,39 +3216,57 @@ def render_all():
 		initialize_fov()
 		fov_recompute = False
 		
-		for y in range(MAP_HEIGHT):
-			for x in range(MAP_WIDTH):
-				map[x][y].illuminated = False
-				map[x][y].illuminated_left = False
-				map[x][y].illuminated_down = False
-				map[x][y].illuminated_right = False
-				map[x][y].illuminated_up = False
-		
-		
-		
-		for light_source in light_sources:
-			if light_source.distance_to(player) <= MAX_VISIBILITY_RADIUS + light_source.light_radius:
-				libtcod.map_compute_fov(fov_map, light_source.x, light_source.y, light_source.light_radius, FOV_LIGHT_WALLS, FOV_ALGO)
+		if not SHOW_ALL:
+			for y in range(MAP_HEIGHT):
+				for x in range(MAP_WIDTH):
+					map[x][y].illuminated = False
+					map[x][y].illuminated_left = False
+					map[x][y].illuminated_down = False
+					map[x][y].illuminated_right = False
+					map[x][y].illuminated_up = False
+					
 
-				for y in range(normalize_to_map_height(light_source.y - light_source.light_radius), normalize_to_map_height(light_source.y + light_source.light_radius)):
-					for x in range(normalize_to_map_width(light_source.x - light_source.light_radius), normalize_to_map_width(light_source.x + light_source.light_radius)):
-						visible = libtcod.map_is_in_fov(fov_map, x, y)
-						if visible:
+			for light_source in light_sources:
+				if light_source.distance_to(player) <= MAX_VISIBILITY_RADIUS + light_source.light_radius:
+					libtcod.map_compute_fov(fov_map, light_source.x, light_source.y, light_source.light_radius, FOV_LIGHT_WALLS, FOV_ALGO)
+					
+					up_offset = 0
+					down_offset = 0
+					left_offset = 0
+					right_offset = 0
+					
+					if light_source.light_source == 'Directional':
 
-							map[x][y].illuminated = True
+						if light_source.direction == 'Up':
+							up_offset = light_source.light_radius - 1
+						elif light_source.direction == 'Down':
+							down_offset = light_source.light_radius
+						elif light_source.direction == 'Left':
+							left_offset = light_source.light_radius - 1
+						elif light_source.direction == 'Right':
+							right_offset = light_source.light_radius
+						else:
+							print 'Should not get here ' + light_source.name
+					
+					for y in range(normalize_to_map_height(light_source.y - light_source.light_radius + down_offset), normalize_to_map_height(light_source.y + light_source.light_radius - up_offset)):
+						for x in range(normalize_to_map_width(light_source.x - light_source.light_radius + right_offset), normalize_to_map_width(light_source.x + light_source.light_radius - left_offset)):
+							visible = libtcod.map_is_in_fov(fov_map, x, y)
+							if visible:
 
-							if len(map[x][y].objects_on_this_tile) > 0:
-								if map[x][y].check_blocks_sight():
-									right_blocked = map[x + 1][y].check_blocks_sight()
-									down_blocked = map[x][y + 1].check_blocks_sight()
-									left_blocked = map[x - 1][y].check_blocks_sight()
-									up_blocked = map[x][y - 1].check_blocks_sight()
-									
-									map[x][y].illuminated = False
-									if light_source.x > x and not right_blocked: map[x][y].illuminated_right = True
-									if light_source.y > y and not down_blocked: map[x][y].illuminated_down = True
-									if light_source.x < x and not left_blocked: map[x][y].illuminated_left = True
-									if light_source.y < y and not up_blocked: map[x][y].illuminated_up = True
+								map[x][y].illuminated = True
+
+								if len(map[x][y].objects_on_this_tile) > 0:
+									if map[x][y].check_blocks_sight():
+										right_blocked = map[x + 1][y].check_blocks_sight()
+										down_blocked = map[x][y + 1].check_blocks_sight()
+										left_blocked = map[x - 1][y].check_blocks_sight()
+										up_blocked = map[x][y - 1].check_blocks_sight()
+										
+										map[x][y].illuminated = False
+										if light_source.x > x and not right_blocked: map[x][y].illuminated_right = True
+										if light_source.y > y and not down_blocked: map[x][y].illuminated_down = True
+										if light_source.x < x and not left_blocked: map[x][y].illuminated_left = True
+										if light_source.y < y and not up_blocked: map[x][y].illuminated_up = True
 
 						
 		libtcod.map_compute_fov(fov_map, player.x, player.y, MAX_VISIBILITY_RADIUS, FOV_LIGHT_WALLS, FOV_ALGO)
@@ -3574,6 +3637,12 @@ def handle_keyboard():
 	
 	if key_char == 't':
 		return True
+		
+	if key_char == 'x' or key_char == 'X':
+		if player.movement_locked:
+			player.movement_locked = False
+		else:
+			player.movement_locked = True
 
 	if key_char == 'w' or key_char == 'W':
 		move_success = player.move(0, -1)
@@ -3735,14 +3804,25 @@ def prompt_to_choose_object(list_of_objects, header=None):
 		if this_object.quantity > 1:
 			quantity = ' (x' + str(this_object.quantity) + ')'
 
-		direction = ''
-		
-		if this_object.x:
-			x_offset = this_object.x - player.x
-			y_offset = this_object.y - player.y
-			direction = '  (x:' + str(x_offset) + ', y:' + str(y_offset) + ')'
+		general_info = ''
 
-		list_of_objects_names.append(optional_ID_tag + this_object.name + quantity + direction)
+		
+		if this_object.functions_as_door:
+			general_info = general_info + ' (' + str(this_object.open_closed_state) + ')'
+		if this_object.functions_as_lock:
+			general_info = general_info + ' (' + str(this_object.locked_unlocked_state) + ')'
+		if this_object.functions_on_off:
+			general_info = general_info + ' (' + str(this_object.on_off_state) + ')'
+		
+		if not this_object.in_inventory_of:
+			general_info = general_info + ' (' + map[player.x][player.y].angle_to(this_object) + ')'
+			
+			#for distance coords
+			#x_offset = this_object.x - player.x
+			#y_offset = this_object.y - player.y
+			#general_info = '  (x:' + str(x_offset) + ', y:' + str(y_offset) + ')'
+
+		list_of_objects_names.append(optional_ID_tag + this_object.name + quantity + general_info)
 
 	chosen_object_index = menu(header, None, list_of_objects_names)
 	
@@ -3765,7 +3845,7 @@ def target_tile(return_object_if_possible = False, max_range = None):
 		(x, y) = (mouse.cx, mouse.cy)
 
 		if mouse.rbutton_pressed or key.vk == libtcod.KEY_ESCAPE:
-			return (None, None)  # cancel if the player right-clicked or pressed Escape
+			return None  # cancel if the player right-clicked or pressed Escape
 
 		if x < MAP_WIDTH and y < MAP_HEIGHT:
 
@@ -3780,12 +3860,14 @@ def target_tile(return_object_if_possible = False, max_range = None):
 				return map[x][y]
 				
 def toggle_main_power(force_state = None):
-	global light_sources, main_power_on, affixed_objects, non_affixed_objects
+	global light_sources, main_power_on, affixed_objects, non_affixed_objects, player
 	
 	if main_power_on == True:
 		main_power_on = False
+		player.light_radius = 3
 	else:
 		main_power_on = True
+		player.light_radius = 7
 		
 	all_objects = affixed_objects + non_affixed_objects
 	
@@ -3821,6 +3903,7 @@ def reset_everything():
 	global light_sources
 	global light_source_fov_maps
 	global main_power_on
+	global current_music
 	
 	map = []
 	affixed_objects = []
@@ -3841,6 +3924,7 @@ def reset_everything():
 	light_sources = []
 	light_source_fov_maps = []
 	main_power_on = True
+	current_music = None
 
 
 def new_game():
@@ -4008,18 +4092,6 @@ def play_game():
 	for i in range(1, 15):
 		blah = get_object_by_name('Lamp')
 		random_place_object(blah)
-	"""	
-	for i in range(1, 15):
-		blah = get_object_by_name('Filing Cabinet')
-		blah.quantity = 1
-		random_place_object(blah)
-		
-	for i in range(1, 15):
-		blah = get_object_by_name('Simple Key')
-		blah.quantity = 1
-		random_place_object(blah)
-
-	"""
 
 
 	# main loop
@@ -4036,7 +4108,8 @@ def play_game():
 
 		libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS | libtcod.EVENT_MOUSE, key, mouse)
 
-		handle_mouse()
+		if handle_mouse():
+			player.unit.turn_taken = True
 
 		libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS | libtcod.EVENT_MOUSE, key, mouse)
 
@@ -4053,7 +4126,7 @@ def play_game():
 
 		# EVENTUALLY THE PROJECTILE RENDER SHOULD BE BASED ON THROW POWER
 		while len(objects_in_motion) > 0:
-			if libtcod.sys_elapsed_seconds() >  last_projectile_tick + 0.001:
+			if libtcod.sys_elapsed_seconds() >  last_projectile_tick + 0.0001:
 		
 				for moving_thing in objects_in_motion:
 					if ACTIVATE_FUNCTION_TIMERS: time_variable = start_test()
@@ -4068,106 +4141,104 @@ def play_game():
 			
 		if ACTIVATE_FUNCTION_TIMERS: end_test(moving_projectiles_time_variable, '(loop) all moving projectiles combined')
 		
-		if key.pressed and game_state == 'playing' and libtcod.sys_elapsed_seconds() > last_tick + NUMBER_OF_SECONDS_BETWEEN_TURNS:
+		if not player.unit.turn_taken:
+			if handle_keyboard():
+				player.unit.turn_taken = True
+		
+		if player.unit.turn_taken == True and libtcod.sys_elapsed_seconds() > last_tick + NUMBER_OF_SECONDS_BETWEEN_TURNS:
 			
 			last_tick = libtcod.sys_elapsed_seconds()
 
-			if not player.destroyed:
-
-				if handle_keyboard():
-					player.unit.turn_taken = True
-
-				if player.unit.turn_taken:
-					if ACTIVATE_FUNCTION_TIMERS: all_units_turn_time = start_test()
-					temp_units = [this_unit for this_unit in units]
-					for some_guy in temp_units:
-						if not some_guy.held_by:
-							if not some_guy.unit.turn_taken:
-								if ACTIVATE_FUNCTION_TIMERS: time_variable = start_test()
-								some_guy.unit.take_turn()
-								if ACTIVATE_FUNCTION_TIMERS: end_test(time_variable, some_guy.name + ' taking their turn')
-								
-								# bonus turn for the thing when it's panicking
-								if some_guy.unit.the_thing_revealed:
-									some_guy.unit.take_turn()
-								
-								
-						some_guy.unit.turn_taken = False
-							
-					if ACTIVATE_FUNCTION_TIMERS: end_test(all_units_turn_time, '(loop) all units taking thier turns')
-					num_turns += 1
+			if ACTIVATE_FUNCTION_TIMERS: all_units_turn_time = start_test()
+			temp_units = [this_unit for this_unit in units]
+			for some_guy in temp_units:
+				if not some_guy.held_by:
+					if not some_guy.unit.turn_taken:
+						if ACTIVATE_FUNCTION_TIMERS: time_variable = start_test()
+						some_guy.unit.take_turn()
+						if ACTIVATE_FUNCTION_TIMERS: end_test(time_variable, some_guy.name + ' taking their turn')
+						
+						# bonus turn for the thing when it's panicking
+						if some_guy.unit.the_thing_revealed:
+							some_guy.unit.take_turn()
+						
+						
+				some_guy.unit.turn_taken = False
 					
+			if ACTIVATE_FUNCTION_TIMERS: end_test(all_units_turn_time, '(loop) all units taking thier turns')
+			num_turns += 1
+			
 
-					# Burning objects handling
-					for burning_thing in objects_on_fire:
-						if map[burning_thing.x][burning_thing.y].burn_value >= 0:
-							if not map[burning_thing.x][burning_thing.y].on_fire:
-								map[burning_thing.x][burning_thing.y].on_fire = True
-								map[burning_thing.x][burning_thing.y].char = 'F'
-								map[burning_thing.x][burning_thing.y].foreground_colour = libtcod.light_red
-								tiles_on_fire.append(map[burning_thing.x][burning_thing.y])
+			# Burning objects handling
+			for burning_thing in objects_on_fire:
+				if map[burning_thing.x][burning_thing.y].burn_value >= 0:
+					if not map[burning_thing.x][burning_thing.y].on_fire:
+						map[burning_thing.x][burning_thing.y].on_fire = True
+						map[burning_thing.x][burning_thing.y].char = 'F'
+						map[burning_thing.x][burning_thing.y].foreground_colour = libtcod.light_red
+						tiles_on_fire.append(map[burning_thing.x][burning_thing.y])
 
-						# Be on fire
-						burning_thing.condition -= 5
-						if not burning_thing.unit:
-							burning_thing.char = 'F'
-						burning_thing.foreground_colour = pick_random([libtcod.dark_red, libtcod.yellow, libtcod.orange])
+				# Be on fire
+				burning_thing.condition -= 5
+				if not burning_thing.unit:
+					burning_thing.char = 'F'
+				burning_thing.foreground_colour = pick_random([libtcod.dark_red, libtcod.yellow, libtcod.orange])
 
-						# Burn to death
-						if burning_thing.condition <= 0:
-							burning_thing.on_fire = False
-							objects_on_fire.remove(burning_thing)
-							burning_thing.destroy()
-							
-					if ACTIVATE_FUNCTION_TIMERS: time_variable = start_test()
+				# Burn to death
+				if burning_thing.condition <= 0:
+					burning_thing.on_fire = False
+					objects_on_fire.remove(burning_thing)
+					burning_thing.destroy()
 					
-					# Burning tiles handling
-					for burning_tile in tiles_on_fire:
-						for burn_this_object in burning_tile.objects_on_this_tile:
-							if not burn_this_object.on_fire:
-								burn_this_object.on_fire = True
-								objects_on_fire.append(burn_this_object)
+			if ACTIVATE_FUNCTION_TIMERS: time_variable = start_test()
+			
+			# Burning tiles handling
+			for burning_tile in tiles_on_fire:
+				for burn_this_object in burning_tile.objects_on_this_tile:
+					if not burn_this_object.on_fire:
+						burn_this_object.on_fire = True
+						objects_on_fire.append(burn_this_object)
 
-						burning_tile.burn_value -= 1
+				burning_tile.burn_value -= 1
 
-						if burning_tile.burn_value <= 3:
-							try:
-								right = map[normalize_to_map_width(burning_tile.x + 1)][normalize_to_map_height(burning_tile.y)]
-								left = map[normalize_to_map_width(burning_tile.x - 1)][normalize_to_map_height(burning_tile.y)]
-								up = map[normalize_to_map_width(burning_tile.x)][normalize_to_map_height(burning_tile.y - 1)]
-								down = map[normalize_to_map_width(burning_tile.x)][normalize_to_map_height(burning_tile.y + 1)]
-								upright = map[normalize_to_map_width(burning_tile.x + 1)][normalize_to_map_height(burning_tile.y - 1)]
-								upleft = map[normalize_to_map_width(burning_tile.x - 1)][normalize_to_map_height(burning_tile.y - 1)]
-								downright = map[normalize_to_map_width(burning_tile.x + 1)][normalize_to_map_height(burning_tile.y + 1)]
-								downleft = map[normalize_to_map_width(burning_tile.x - 1)][normalize_to_map_height(burning_tile.y + 1)]
+				if burning_tile.burn_value <= 3:
+					try:
+						right = map[normalize_to_map_width(burning_tile.x + 1)][normalize_to_map_height(burning_tile.y)]
+						left = map[normalize_to_map_width(burning_tile.x - 1)][normalize_to_map_height(burning_tile.y)]
+						up = map[normalize_to_map_width(burning_tile.x)][normalize_to_map_height(burning_tile.y - 1)]
+						down = map[normalize_to_map_width(burning_tile.x)][normalize_to_map_height(burning_tile.y + 1)]
+						upright = map[normalize_to_map_width(burning_tile.x + 1)][normalize_to_map_height(burning_tile.y - 1)]
+						upleft = map[normalize_to_map_width(burning_tile.x - 1)][normalize_to_map_height(burning_tile.y - 1)]
+						downright = map[normalize_to_map_width(burning_tile.x + 1)][normalize_to_map_height(burning_tile.y + 1)]
+						downleft = map[normalize_to_map_width(burning_tile.x - 1)][normalize_to_map_height(burning_tile.y + 1)]
 
-								right.set_on_fire()
-								left.set_on_fire()
-								up.set_on_fire()
-								down.set_on_fire()
-								upright.set_on_fire()
-								upleft.set_on_fire()
-								downright.set_on_fire()
-								downleft.set_on_fire()
+						right.set_on_fire()
+						left.set_on_fire()
+						up.set_on_fire()
+						down.set_on_fire()
+						upright.set_on_fire()
+						upleft.set_on_fire()
+						downright.set_on_fire()
+						downleft.set_on_fire()
 
-							except IndexError:
-								None
+					except IndexError:
+						None
 
-						if burning_tile.burn_value <= 0:
-							tiles_on_fire.remove(burning_tile)
-							burning_tile.foreground_colour = libtcod.grey
-							burning_tile.char = '.'
-							
-					if ACTIVATE_FUNCTION_TIMERS: end_test(time_variable, 'handling burning stuff')
-				
-				if not DISABLE_THE_THING:
-					if not chosen_thing and num_turns > NUMBER_OF_TURNS_UNTIL_THE_THING:
-						thing_candidates = []
-						for obj in units:
-							if not obj == player:
-								thing_candidates.append(obj)
-						chosen_thing = thing_candidates[libtcod.random_get_int(0, 0, (len(thing_candidates) - 1))]
-						chosen_thing.unit.become_the_thing()
+				if burning_tile.burn_value <= 0:
+					tiles_on_fire.remove(burning_tile)
+					burning_tile.foreground_colour = libtcod.grey
+					burning_tile.char = '.'
+					
+			if ACTIVATE_FUNCTION_TIMERS: end_test(time_variable, 'handling burning stuff')
+		
+		if not DISABLE_THE_THING:
+			if not chosen_thing and num_turns > NUMBER_OF_TURNS_UNTIL_THE_THING:
+				thing_candidates = []
+				for obj in units:
+					if not obj == player:
+						thing_candidates.append(obj)
+				chosen_thing = thing_candidates[libtcod.random_get_int(0, 0, (len(thing_candidates) - 1))]
+				chosen_thing.unit.become_the_thing()
 		
 		if ACTIVATE_FUNCTION_TIMERS: end_test(main_loop_time, '(loop) main loop')
 		
@@ -4183,7 +4254,10 @@ def initialize_sounds():
 	global menu_click_sound
 	global key_unlock_sound
 	global activate_sound
+	global current_music
 	
+	
+	current_music = None
 	impact_sound = pygame.mixer.Sound('thing_sounds/impact.wav')
 	gun_sound = pygame.mixer.Sound('thing_sounds/gun.wav')
 	explosion_sound = pygame.mixer.Sound('thing_sounds/explosion.wav')
@@ -4198,18 +4272,23 @@ def initialize_sounds():
 def end_game_return_to_main_menu():
 	global game_state
 	game_state = None
-	reset_everything()
 	render_all()
 	play_music(None)
 	return True
 	
 	
 def play_music(music_file):
+	global current_music
 	if not music_file:
 		pygame.mixer.music.stop()
+	elif music_file == 'Pause':
+		pygame.mixer.music.set_volume(0)
+	elif music_file == current_music:
+		pygame.mixer.music.set_volume(1)
 	else:
 		pygame.mixer.music.load('thing_sounds/' + music_file)
 		pygame.mixer.music.play(-1)
+		current_music = music_file
 
 def main_menu():
 	global SHOW_ALL, HEAR_ALL, PLAY_MUSIC, DISABLE_THE_THING, fov_recompute
@@ -4688,7 +4767,7 @@ def get_object_by_name(object_name):
 		this_object.on_argument = ('bto.ogg')
 		
 		this_object.off_function = play_music
-		this_object.off_argument = None
+		this_object.off_argument = 'Pause'
 		
 	elif object_name == 'Generator':
 		this_object = get_predesigned_object_by_name('Generic Object')
@@ -4719,7 +4798,7 @@ def get_object_by_name(object_name):
 		this_object.on_off_state = 'On'
 		this_object.attached_to_main_power = True
 		
-		this_object.light_source = True
+		this_object.light_source = 'Omni'
 		this_object.light_radius = 8
 		
 		this_object.on_function = this_object.adjust_light_radius
@@ -4739,7 +4818,7 @@ def get_object_by_name(object_name):
 		this_object.functions_on_off = True
 		this_object.on_off_state = 'Off'
 		
-		this_object.light_source = True
+		this_object.light_source = 'Directional'
 		this_object.light_radius = 0
 		
 		this_object.on_function = this_object.adjust_light_radius
@@ -4772,7 +4851,7 @@ def get_object_by_name(object_name):
 		this_object.foreground_colour = libtcod.white
 		this_object.description = "Player"
 		this_object.unit = get_unit_by_name('Scientist')
-		this_object.light_source = True
+		this_object.light_source = 'Omni'
 		this_object.light_radius = 7
 
 	elif object_name == 'Scientist':
