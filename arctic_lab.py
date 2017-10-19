@@ -3,6 +3,8 @@
 # libtcod python tutorial
 #
 
+# arctic-lab-testing@hotmail.com
+# testing123
 
 # https://alexeagleson.wixsite.com/thething
 
@@ -452,32 +454,122 @@
 # Main generator now properly controls all lamps, as well as the radio
 # Objects that were off before shutting down main power will stay off, objects that were on will turn back on
 
+# v0.15.0
+# Added info to object descriptions to show their state (items with locks will show (Locked) or (Unlocked), lamps will show (On) / (Off) etc.
+
+# v0.15.1
+# Can now attack by clicking the right mouse button
+# Radio functions more like a radio -- music still plays when radio is off, and will resume at a later time in the song when turned back on
+# Main power being shut off now dramatically reduces the player's natrual light radius -- encouraging the use of flashlights
+
+# v0.15.2
+# Implemented directional lighting - flashlights now shine a directional beam that moves with the direction you move when you are carrying it
+# New 'X' hotkey will lock your movement, so that you can shine the flashlight around the room without moving or using up your turn
+
+# v0.15.3
+# Directional lighting is now a cone shape rather than a rectangle
+
+# v0.15.4
+# Added in new sound effects for glass breaking, "no damage" impacts, main power shutdown, and more.
+
+# v0.15.5
+# Added mouseover tooltips in small console windows
+
+# v0.15.6
+# Improved the tooltips, made them height adjust to quantitiy of text, and maximum of three on the screen at once
+
+# v0.15.7
+# Added a keybaord input function for text entry -- implemented naming your character on new game.
+
+# v0.15.8
+# Added the basic functionality of a scoreboard that keeps track of saved high scores across multiple plays
+
+# v0.15.9
+# Implemented the actual tracking function of the scoreboard, including a running total for the session, and a saved "all time" count
+
+# v0.16.0
+# Added a number of new sound effects for different material imapcts across different objects
+
+# v0.16.1
+# Made tooltip windows partially transparent
+# Added a flashing effect when damage is taken
+
+# v0.16.2
+# Fixed range of basic attacks
+
+# v0.16.3
+# Fixed the FOV on audio sounds
+
+# v0.16.5
+# Big improvement to the way damage is calcualted between two colliding objects - collisions should feel more realistic now.
+
+# v0.16.6
+# Can no longer grab and move objects across the room
+# Attacking heavy objects now does damage to your own limbs
+
+# v0.16.8
+# Began working on a universal function for displaying menu screens.  Previous each console window (object info panel, scoreboard, player stats, etc) were all built separately.  In the process of creating one function that can take text and display a formatted console screen anywhere on the main screen, including headers, object info, etc.
+# So far this has now been implemented in the hovering tooltips and the scoreboard only.
+
+# v0.16.9
+# Transitioned the object info panel on the right side into the new universal panel function
+
+# v0.17.0
+# Transitioned the player info panel and control scheme display into the new universal panel function
+
+# v0.17.1
+# Transitioned the scrolling message panel display into the new universal panel function
+# Lost functionality for the scroll up/down buttons since they were specifically built for the mesage panel
+
+# v0.17.2
+# Added universal panel scrolling functionality
+
+# v0.18.0
+# Complete overhaul of the screen console system
+
+# v0.18.1
+# Upgraded object info panel now only shows object info while that object remains in the FOV
+
+# v0.18.3
+# Adjusted all screen consoles so they now have relative width to the size of the screen.  First step toward being able to handle variable screen resolutions.
+
+# v0.18.4
+# Game now supports custom choice of different screen resolutions.  Game windows will adjust in size and textwrap to adapt to resolution.
+# Can now choose between three different game skins.
+
+# v0.18.5
+# Added a new type of panel that shows the condition of unit limbs.  
+# Added a "tab' functionality to panels, specificall ythe object info panel on the right that allows you to toggle between basic info and limb condition.
+
+# v0.19.0
+# Improved the equipment system -- can now equip objects directly by clicking on them without having to pick up first
+# A fraction of limb damage will now translate to the main body -- as example damage to an object's left arm will transfer 10% of that to the objects "overall" condition
+
+# v0.19.1
+# Objects can no longer spawn in front of doors to blocks paths
+# Weapons can now be fired at empty tiles, don't require an object to be on them
+# Equipping light sources like the flashlight will now treat them as a light source, no longer require you to manually drag them around.
+
+
+
+
+
 
 #TO DO:
 
+# top scores
+# thing keeps attacking when transformed
 
-
-# show left/right and on/off in items description
+#Gameplay
+#----------
 # refactor object placement system
+# end goal -- kill the thing -- final score
+# arms and legs function -- if broken cannot perform tasks
+
+#AI
+#----------
 # AI improvements - pick up objects for a reason
 # feelings / suspicion system
-# end goal -- kill the thing -- final score
-# objects can stil block on diagonals and against object_groups
-# fix the x y coordinates system, particularly for objects in inventory
-
-# arms and legs function -- if broken cannot perform tasks
-# stacked_object = try_to_stack(map[x][y].objects_on_this_tile, object_to_place) list indices must be intgers not Nonetype
-
-# Load any object into rocket launcher
-# burning thing x / burning thingy . burn value >= 0 list must be int not nontype
-
-
-
-
-
-
-
-
 
 
 
@@ -503,32 +595,9 @@ import time
 import pygame
 import pygame.mixer
 import sdl2
+import pickle
 
 import libtcodpy as libtcod
-
-# actual size of the window
-SCREEN_WIDTH = 120
-SCREEN_HEIGHT = 67
-
-# size of the map
-MAP_WIDTH = 90
-MAP_HEIGHT = 45
-
-# sizes and coordinates relevant for the GUI
-
-OBJECT_INFO_BAR_WIDTH = SCREEN_WIDTH - MAP_WIDTH
-PANEL_HEIGHT = SCREEN_HEIGHT - MAP_HEIGHT
-PANEL_Y = SCREEN_HEIGHT - PANEL_HEIGHT
-MESSAGE_PANEL_WIDTH = SCREEN_WIDTH - OBJECT_INFO_BAR_WIDTH
-MSG_WIDTH = MESSAGE_PANEL_WIDTH - 2
-MSG_HEIGHT = PANEL_HEIGHT - 1
-
-INVENTORY_WIDTH = 50
-
-# parameters for dungeon generator
-ROOM_MAX_SIZE = 10
-ROOM_MIN_SIZE = 6
-MAX_ROOMS = 30
 
 FOV_ALGO = 0  # default FOV algorithm
 FOV_LIGHT_WALLS = True  # light walls or not
@@ -536,7 +605,7 @@ MAX_VISIBILITY_RADIUS = 20
 
 SIZE_TO_BLOCK_SIGHT = 10
 
-LIMIT_FPS = 60  # 30 frames-per-second maximum
+LIMIT_FPS = 30  # 30 frames-per-second maximum
 
 # For testing full visibility
 SHOW_ALL = False
@@ -552,16 +621,15 @@ TOTAL_MAX_TURNS_PER_TASK = 50
 
 AVERAGE_TURN_WAIT_BETWEEN_NEW_TASKS = 0
 
-MINIMUM_DAMAGE_TO_REGISTER = 10
+MINIMUM_DAMAGE_TO_REGISTER = 5
 MAXIMUM_DAMAGE_ALLOWED = 100
 MINIMUM_PROBABILITY_TO_ATTEMPT = 25
 
 STANDARD_ACCURACY_DISTANCE = 5
 TARGETED_THROW_ACCURACY_BONUS = 5
 
-DEFAULT_INTERNAL_KINETIC_ENERGY = 10
-LOSS_OF_MOMENTUM_ON_IMPACT = 0.75
-
+DEFAULT_INTERNAL_KINETIC_ENERGY = 1
+LOSS_OF_MOMENTUM_ON_IMPACT = 0.5
 
 MORE_ERROR_LOGGING = False
 ACTIVATE_FUNCTION_TIMERS = True
@@ -579,11 +647,13 @@ CHANCE_OF_EXAMINE_SUCCESS_OUT_OF_100 = 100
 
 EXAMINE_FEELINGS_CHANGE = -1
 
-DISTANCE_TO_INTERACT = 3
+DISTANCE_TO_INTERACT = 2.5
 
-EXPLORED_TILE_COLOUR_DESATURATION = 0.3
+EXPLORED_TILE_COLOUR_DESATURATION = 0.25
 
 DISABLE_THE_THING = False
+
+DEFAULT_SIZE_OF_MATERIAL_COMPONENTS = 0.5
 
 # as a fraction of total size of object
 DEFAULT_HEAD_SIZE = 0.1
@@ -602,45 +672,232 @@ dialogue_colour = libtcod.green
 
 temporary_obstacles = []
 
-def current_message_colour(message_type):
-	global action_colour, narrator_colour, dialogue_colour
+main_game_ui = None
+
+player = None
+
+def establish_constants(x_res = 1920, y_res = 1080):
+	global SCREEN_WIDTH
+	global SCREEN_HEIGHT
+
+	global MAP_WIDTH
+	global MAP_HEIGHT
+
+	global OBJECT_INFO_BAR_WIDTH 
+	global MAX_TOOLTIP_WIDTH
+	global PANEL_HEIGHT
+	global TOOLTIP_HEIGHT
+	global PANEL_Y
+	global MESSAGE_PANEL_WIDTH
 	
-	if message_type == 'Action':
-		if action_colour == libtcod.red:
-			action_colour = libtcod.lighter_red
-		else:
-			action_colour = libtcod.red
-		return action_colour
-	elif message_type == 'Narrator':
-		if narrator_colour == libtcod.purple:
-			narrator_colour = libtcod.lighter_purple
-		else:
-			narrator_colour = libtcod.purple
-		return narrator_colour
-	elif message_type == 'Dialogue':
-		if dialogue_colour == libtcod.green:
-			dialogue_colour = libtcod.lighter_green
-		else:
-			dialogue_colour = libtcod.green
-		return dialogue_colour
-	elif message_type == 'Debug':
-		return libtcod.yellow
+	global MIN_CONSOLE_WIDTH
+	global MAX_CONSOLE_WIDTH
+	global MIN_CONSOLE_HEIGHT
+	global MAX_CONSOLE_HEIGHT
+
+	global ROOM_MAX_SIZE
+	global ROOM_MIN_SIZE
+	global MAX_ROOMS
+
+	# actual size of the window
+	SCREEN_WIDTH = int(x_res / 16)
+	SCREEN_HEIGHT = int(y_res / 16) + 1
+
+	# size of the map
+	MAP_WIDTH = int(SCREEN_WIDTH * 0.75)
+	MAP_HEIGHT = int(SCREEN_HEIGHT * 0.67)
+
+	# sizes and coordinates relevant for the GUI
+	OBJECT_INFO_BAR_WIDTH = SCREEN_WIDTH - MAP_WIDTH
+	MAX_TOOLTIP_WIDTH = OBJECT_INFO_BAR_WIDTH
+	PANEL_HEIGHT = SCREEN_HEIGHT - MAP_HEIGHT
+	TOOLTIP_HEIGHT = int(PANEL_HEIGHT * 1.5)
+	PANEL_Y = SCREEN_HEIGHT - PANEL_HEIGHT
+	MESSAGE_PANEL_WIDTH = SCREEN_WIDTH - OBJECT_INFO_BAR_WIDTH
+	
+	MIN_CONSOLE_WIDTH = int(MAP_WIDTH / 6)
+	MAX_CONSOLE_WIDTH = int(MAP_WIDTH / 2)
+	MIN_CONSOLE_HEIGHT = int(MAP_HEIGHT / 6)
+	MAX_CONSOLE_HEIGHT = int(MAP_HEIGHT / 2)
+
+	# parameters for dungeon generator
+	ROOM_MAX_SIZE = int(math.sqrt(MAP_WIDTH * MAP_HEIGHT) / 6)
+	ROOM_MIN_SIZE = 6
+	MAX_ROOMS = int(math.sqrt(MAP_WIDTH * MAP_HEIGHT) / 3)
+
+establish_constants()
+
+class Game_UI:
+	# The main Game screen consoles
+	def __init__(self):
+		self.con = None
+		self.player_panel = None
+		self.object_info_panel = None
+		self.message_panel = None
+		self.tooltip_panels = []
+
+		self.player_panel_scroll_state = 0
+		self.object_info_panel_scroll_state = 0
+		self.message_panel_scroll_state = 0
 		
-	return None
+		self.object_info_panel_object_to_track = None
+		
+		self.show_object_info = True
+		self.show_appendage_info = False
+		
+	def delete_all_panels(self):
+		libtcod.console_clear(self.con)
+	
+		self.con = None
+		self.player_panel = None
+		self.object_info_panel = None
+		self.message_panel = None
+		self.tooltip_panels = []
+
+	def force_initialize_all_panels(self):
+		self.delete_all_panels()
+		
+		self.initialize_con()
+		self.initialize_player_panel()
+		self.initialize_object_info_panel()
+		self.initialize_message_panel()
+		
+	def initialize_con(self):
+		self.con = None
+		self.con = libtcod.console_new(MAP_WIDTH, MAP_HEIGHT)
+		
+	def initialize_player_panel(self, maintain_scroll_state = False):
+		if self.player_panel and maintain_scroll_state:
+			self.player_panel_scroll_state = self.player_panel.message_scroll_state
+		self.player_panel = None
+		self.player_panel = generate_player_info_panel()
+		self.player_panel.x = 0
+		self.player_panel.y = MAP_HEIGHT
+		if self.player_panel and maintain_scroll_state:
+			self.player_panel.message_scroll_state = self.player_panel_scroll_state
+
+	def initialize_object_info_panel(self, maintain_scroll_state = False):
+		global object_info_object, fov_map
+		
+		if self.object_info_panel and maintain_scroll_state:
+			self.object_info_panel_scroll_state = self.object_info_panel.message_scroll_state
+		
+		if self.object_info_panel:
+			if self.object_info_panel_object_to_track <> object_info_object:
+				self.object_info_panel_scroll_state = 0
+		
+		self.object_info_panel_object_to_track = object_info_object
+		
+		if object_info_object:
+			if not libtcod.map_is_in_fov(fov_map, object_info_object.x, object_info_object.y):
+				self.object_info_panel_object_to_track = None
+		
+		self.object_info_panel = None
+
+		if self.show_object_info:
+			self.object_info_panel = generate_object_info_panel(self.object_info_panel_object_to_track, width = OBJECT_INFO_BAR_WIDTH, height = MAP_HEIGHT, include_info = True, include_functions = True, include_equipped = True, include_debug = True, include_components = True, include_description = True, supplementary_text = None)
+		elif self.show_appendage_info:
+			self.object_info_panel = generate_object_appendage_status_panel(self.object_info_panel_object_to_track, width = OBJECT_INFO_BAR_WIDTH, height = MAP_HEIGHT)
+		
+		self.object_info_panel.x = MAP_WIDTH
+		self.object_info_panel.y = 0
+		
+		if self.object_info_panel and maintain_scroll_state:
+			self.object_info_panel.message_scroll_state = self.object_info_panel_scroll_state
+		
+		tab_1 = '[Inf]'
+		tab_2 = '[App]'
+		
+		x_1 = 2
+		x_2 = x_1 + len(tab_1) + 1
+		
+		tab_1_colour = libtcod.white
+		tab_2_colour = libtcod.white
+		
+		if self.show_object_info:
+			tab_1_colour = libtcod.light_green
+		elif self.show_appendage_info:
+			tab_2_colour = libtcod.light_green
+		
+		self.object_info_panel.all_line_on_screen_consoles.append(Line_On_Screen_Console(x = x_1, y = self.object_info_panel.height - 2, text = tab_1, colour = tab_1_colour, return_function = self.object_info_panel.show_object_info, disable_scrolling = True))
+		self.object_info_panel.all_line_on_screen_consoles.append(Line_On_Screen_Console(x = x_2, y = self.object_info_panel.height - 2, text = tab_2, colour = tab_2_colour, return_function = self.object_info_panel.show_appendage_info, disable_scrolling = True))
+
+	def initialize_message_panel(self, maintain_scroll_state = False):
+	
+		if self.message_panel and maintain_scroll_state:
+			self.message_panel_scroll_state = self.message_panel.message_scroll_state
+	
+		self.message_panel = None
+		self.message_panel = generate_message_panel()
+		self.message_panel.x = OBJECT_INFO_BAR_WIDTH
+		self.message_panel.y = MAP_HEIGHT
+		
+		if self.message_panel and maintain_scroll_state:
+			self.message_panel.message_scroll_state = self.message_panel_scroll_state
+		
+	def render_all_panels(self):
+		global fov_map
+		
+		self.initialize_player_panel(maintain_scroll_state = True)
+		self.player_panel.display_me()
+
+		self.initialize_object_info_panel(maintain_scroll_state = True)
+		self.object_info_panel.display_me()
+		
+		if self.message_panel:
+			self.message_panel.display_me()
+		else:
+			self.initialize_message_panel(maintain_scroll_state = False)
+			self.message_panel.display_me()
+		
+		for panel in self.tooltip_panels:
+			panel.display_me(f_transp = 1.0, b_transp = 0.90)
+			del panel
+			
+		self.tooltip_panels = []
+		
+	def check_all_click_points(self):
+		if self.player_panel:
+			self.player_panel.check_mouse_on_panel()
+		
+		if self.object_info_panel:
+			self.object_info_panel.check_mouse_on_panel()
+		
+		if self.message_panel:
+			self.message_panel.check_mouse_on_panel()
+
 	
 def generate_4_digit_ID():
 		# Assign an ID identifier
 		return libtcod.random_get_int(0, 1000, 9999)
+		
+def save_scoreboard():
+	global scoreboard
+	scoreboard.add_session_data_to_total()
+	with open('scoreboard_data.pkl', 'wb') as output:
+		pickle.dump(scoreboard, output, pickle.HIGHEST_PROTOCOL)
 	
+	
+def load_scoreboard():
+	global scoreboard
+	with open('scoreboard_data.pkl', 'rb') as input:
+		scoreboard = pickle.load(input)
+		
+		
+		
+		
 
 class Message:
-	# a tile of the map and its properties
 	def __init__(self, text, type, relevant_objects = None):
 		self.text = text
 		self.type = type
 		self.relevant_objects = relevant_objects
-		self.x = OBJECT_INFO_BAR_WIDTH + 1
-		self.y = None
+		self.x = 0
+		self.y = 0
+		
+		if self.relevant_objects:
+			self.x = self.relevant_objects[0].x
+			self.y = self.relevant_objects[0].y
 		
 		self.ID = generate_4_digit_ID()
 		
@@ -649,25 +906,26 @@ class Message:
 		self.add_message()
 
 	def add_message(self):
-		global fov_map, message_scroll_state
+		global fov_map, main_game_ui
 		
 		if not HEAR_ALL:
 			if self.relevant_objects:
-				if not libtcod.map_is_in_fov(fov_map, self.relevant_objects[0].x, self.relevant_objects[0].y):
+				if not libtcod.map_is_in_fov(fov_map, self.x, self.y):
 					return False
-			
-		if len(self.text) > (MESSAGE_PANEL_WIDTH - 2):
-			all_message_text = textwrap.wrap(self.text, (MESSAGE_PANEL_WIDTH - 2))
-			
-			for i in range(0, len(all_message_text)):
-				message_copy = copy.deepcopy(self)
-				message_copy.text = all_message_text[i]
-				game_msgs.append(message_copy)
-				
-		else:
-			game_msgs.append(self)
+	
+		if self.type == 'Action':
+			self.colour = libtcod.lighter_red
+		elif self.type == 'Narrator':
+			self.colour = libtcod.lighter_purple
+		elif self.type == 'Dialogue':
+			self.colour = libtcod.lighter_green
+		elif self.type == 'Debug':
+			self.colour = libtcod.lighter_yellow
+
+		game_msgs.append(self)
 		
-		message_scroll_state = 0
+		main_game_ui.initialize_message_panel()
+
 		return True
 
 
@@ -712,15 +970,15 @@ class Tile:
 	def angle_to(self, other):
 		dx = other.x - self.x
 		dy = other.y - self.y
-		if abs(dx) > abs(dy):
-			if dx > 0:
+		if abs(dx) >= abs(dy):
+			if dx >= 0:
 				return 'Right'
 			elif dx < 0:
 				return 'Left'
-		else:
-			if dy > 0:
+		elif abs(dx) < abs(dy):
+			if dy >= 0:
 				return 'Down'
-			if dy > 0:
+			elif dy < 0:
 				return 'Up'
 		
 	def check_blocks_sight(self):
@@ -796,15 +1054,15 @@ class Tile:
 					self.last_known_foreground_colour = self.foreground_colour * EXPLORED_TILE_COLOUR_DESATURATION
 					self.last_known_background_colour = self.background_colour * EXPLORED_TILE_COLOUR_DESATURATION
 
-				libtcod.console_put_char_ex(con, self.x, self.y, biggest_object.char, use_this_foreground_colour, use_this_background_colour)
+				libtcod.console_put_char_ex(main_game_ui.con, self.x, self.y, biggest_object.char, use_this_foreground_colour, use_this_background_colour)
 
 			else:
-				libtcod.console_put_char_ex(con, self.x, self.y, self.char, self.foreground_colour, self.background_colour)
+				libtcod.console_put_char_ex(main_game_ui.con, self.x, self.y, self.char, self.foreground_colour, self.background_colour)
 		else:
 			if self.explored:
-				libtcod.console_put_char_ex(con, self.x, self.y, self.last_known_char, self.last_known_foreground_colour, self.last_known_background_colour)
+				libtcod.console_put_char_ex(main_game_ui.con, self.x, self.y, self.last_known_char, self.last_known_foreground_colour, self.last_known_background_colour)
 			else:
-				libtcod.console_put_char_ex(con, self.x, self.y, ' ', libtcod.black, libtcod.black)
+				libtcod.console_put_char_ex(main_game_ui.con, self.x, self.y, ' ', libtcod.black, libtcod.black)
 			
 		return True
 		
@@ -852,7 +1110,7 @@ class Object:
 				 size=0,
 				 material='Wood',
 				 weight=None,
-				 indestructible=False,
+				 indestructible=1,
 				 affixed_to_ground=False,
 				 blocks_sightline=False,
 				 destroyed=False,
@@ -905,7 +1163,12 @@ class Object:
 		self.temp_value = temp_value
 
 		self.description = description
+		
+		self.direction = 'Left'
+		
+		self.movement_locked = False
 
+		self.owner = None
 		self.unit = unit
 		if self.unit:  # let the unit component know who owns it
 			self.unit.owner = self
@@ -918,6 +1181,7 @@ class Object:
 		self.equipped = None
 		self.equipped_to = None
 		self.attack_function = None
+		self.attack_range = 1.5
 		self.ammunition_for = None
 		self.key_for = None
 
@@ -937,6 +1201,7 @@ class Object:
 		self.what_object_should_I_interact_with = None
 		
 		self.light_source = False
+		self.light_source_direction = None
 		self.light_radius = None
 		
 		self.on_function = None
@@ -945,8 +1210,84 @@ class Object:
 		self.off_function = None
 		self.off_argument = None
 
+		self.appendage_of = None
 		
 		self.ID = generate_4_digit_ID()
+		
+	def process_limb_damage_to_body(self, damage, impact_force = 0):
+		if not self.appendage_of:
+			return False
+			
+		HEAD_TO_BODY_DAMAGE_RATIO = 0.5
+		TORSO_TO_BODY_DAMAGE_RATIO = 0.25
+		LARM_TO_BODY_DAMAGE_RATIO = 0.1
+		RARM_TO_BODY_DAMAGE_RATIO = 0.1
+		LLEG_TO_BODY_DAMAGE_RATIO = 0.1
+		RLEG_TO_BODY_DAMAGE_RATIO = 0.1
+
+		if self == self.appendage_of.unit.head:
+			damage = int(damage * HEAD_TO_BODY_DAMAGE_RATIO)		
+		elif self == self.appendage_of.unit.torso:
+			damage = int(damage * TORSO_TO_BODY_DAMAGE_RATIO)
+		elif self == self.appendage_of.unit.larm:
+			damage = int(damage * LARM_TO_BODY_DAMAGE_RATIO)
+		elif self == self.appendage_of.unit.rarm:
+			damage = int(damage * RARM_TO_BODY_DAMAGE_RATIO)
+		elif self == self.appendage_of.unit.lleg:
+			damage = int(damage * LLEG_TO_BODY_DAMAGE_RATIO)
+		elif self == self.appendage_of.unit.rleg:
+			damage = int(damage * RLEG_TO_BODY_DAMAGE_RATIO)
+		
+		self.appendage_of.condition -= damage
+		if self.appendage_of.condition <0: self.appendage_of.condition = 0
+		self.appendage_of.check_if_destroyed(impact_force = impact_force)
+		return True
+		
+	def play_impact_sound(self, damage):
+		global fov_map
+		
+		if not HEAR_ALL:
+			if not libtcod.map_is_in_fov(fov_map, self.x, self.y):
+				return False
+		
+		
+		if damage <= 0:
+			impact_no_damage_sound.play()
+		elif self.material == 'Flesh':
+			impact_flesh_sound.play()
+		elif self.material == 'Plastic':
+			impact_plastic_sound.play()
+		elif self.material == 'Wood':
+			impact_wood_sound.play()
+		elif self.material == 'Flesh':
+			flesh_destroy_sound.play()
+
+		else:
+			impact_sound.play()
+			
+		return True
+			
+		# bark, lock
+			
+	def play_destroy_sound(self):
+	
+		global fov_map
+		
+		if not HEAR_ALL:
+			if not libtcod.map_is_in_fov(fov_map, self.x, self.y):
+				return False
+				
+		if self.internal_kinetic_energy >= 1000:
+			explosion_sound.play()
+			
+		if self.material == 'Glass':
+			glass_break_sound.play()
+		elif self.material == 'Flesh':
+			flesh_destroy_sound.play()
+		elif self.material == 'Stone':
+			stone_destroy_sound.play()
+		elif self.material == 'Wood':
+			wood_destroy_sound.play()
 		
 	def toggle_on_off(self, object_to_toggle, force_state = None):
 
@@ -967,14 +1308,18 @@ class Object:
 		if object_to_toggle.on_off_state == 'On':
 			object_to_toggle.on_off_state = 'Off'
 			object_to_toggle.off_function(object_to_toggle.off_argument)
-		else:
+			activate_off_sound.play()
+			
+		elif object_to_toggle.on_off_state == 'Off':
 			object_to_toggle.on_off_state = 'On'
 			if object_to_toggle.attached_to_main_power and not main_power_on:
 				Message(object_to_toggle.name + ' has no power.', 'Narrator', relevant_objects = [self, object_to_toggle])
-				return False
-			object_to_toggle.on_function(object_to_toggle.on_argument)
-			
-		activate_sound.play()
+				no_power_sound.play()
+			else:
+				object_to_toggle.on_function(object_to_toggle.on_argument)
+				activate_on_sound.play()
+		
+		
 		return True
 		
 		
@@ -1015,6 +1360,26 @@ class Object:
 			inventory_item.y = y
 			if inventory_item.inventory:
 				inventory_item.move_inventory_coords_to_location(x, y)
+				
+		if self.unit:
+			if self.unit.head:
+				self.unit.head.x = x
+				self.unit.head.y = y
+			if self.unit.torso:
+				self.unit.torso.x = x
+				self.unit.torso.y = y
+			if self.unit.larm:
+				self.unit.larm.x = x
+				self.unit.larm.y = y
+			if self.unit.rarm:
+				self.unit.rarm.x = x
+				self.unit.rarm.y = y
+			if self.unit.lleg:
+				self.unit.lleg.x = x
+				self.unit.lleg.y = y
+			if self.unit.rleg:
+				self.unit.rleg.x = x
+				self.unit.rleg.y = y
 			
 	def establish_properties(self):
 		
@@ -1046,6 +1411,11 @@ class Object:
 			self.unit.update_strength(self.unit.strength)
 			
 			self.unit.generate_appendages()
+		
+		# Equip yourright arm as a weapon by default
+		if self.unit:
+			self.equipped = self.unit.rarm
+			self.equipped.equipped_to = self
 			
 		if self.stackable:
 			self.allow_inventory = False
@@ -1121,6 +1491,19 @@ class Object:
 
 	def move(self, dx, dy, force_success = False):
 		global map
+		
+		new_angle = map[self.x][self.y].angle_to(map[self.x + dx][self.y + dy])
+		self.direction = new_angle
+		if self.unit:
+			if self.unit.holding:
+				self.unit.holding.direction = new_angle
+			
+			if self.equipped:
+				self.equipped.direction = new_angle
+		
+		if self.movement_locked:
+			Message(self.name + ' movement locked.  Press x to resume.', 'Narrator', relevant_objects = [self])
+			return True
 
 		test_x = -1
 		test_y = -1
@@ -1144,12 +1527,14 @@ class Object:
 
 			new_x = self.x + dx
 			new_y = self.y + dy
+			
+			
 
 			remove_all_connections_to_object(self)
 			place_object_at_location(self, new_x, new_y, stack_objects_allowed = False, force_placement_success = True)
 
 			if self.unit:
-				self.unit.turn_taken = True
+				self.unit.flag_turn_taken()
 
 			if move_held_object_check_success:
 				self.unit.holding.move(dx, dy)
@@ -1225,7 +1610,7 @@ class Object:
 	def clear(self):
 		# erase the character that represents this object
 		if libtcod.map_is_in_fov(fov_map, self.x, self.y):
-			libtcod.console_put_char_ex(con, self.x, self.y, '.', libtcod.white, libtcod.black)
+			libtcod.console_put_char_ex(main_game_ui.con, self.x, self.y, '.', libtcod.white, libtcod.black)
 
 	def move_astar(self, target):
 		# Allocate a A* path
@@ -1338,32 +1723,30 @@ class Object:
 			return self
 		
 	
-	def destroy(self, impact_force = None):
-		global list_of_things, objects_on_fire, objects_in_motion, player, game_state
+	def destroy(self, collision_kinetic_energy = None, cause_of_destroy = None):
+		global list_of_things, objects_on_fire, objects_in_motion, player, game_state, scoreboard
 
 		if self.destroyed:
 			return False
 		
 		# Destroyed object loses its contents by adding half the force of the attack that destroyed it
-		if impact_force:
-			self.internal_kinetic_energy += int(float(impact_force) - (float(impact_force) * LOSS_OF_MOMENTUM_ON_IMPACT))
+		if collision_kinetic_energy:
+			self.internal_kinetic_energy += collision_kinetic_energy
+			
+			self.internal_kinetic_energy = int(self.internal_kinetic_energy - (self.internal_kinetic_energy * LOSS_OF_MOMENTUM_ON_IMPACT))
 			
 		self.functions_as_lock = False
 		self.locked_unlocked_state = 'Unlocked'
 
 		if self.in_inventory_of:
 			self.in_inventory_of.unit.drop(self)
-
-		self.blocks_sightline = False
-		self.size = 0
-		self.char = '='
-		self.foreground_colour = libtcod.dark_orange
-		self.name = 'Broken ' + self.name
 		
 		if self.functions_on_off:
 			self.toggle_on_off(self, force_state = 'Off')
 			
 		self.destroyed = True
+		
+		self.play_destroy_sound()
 		
 		if self.unit:
 			if self.unit.the_thing:
@@ -1376,49 +1759,66 @@ class Object:
 			process_projectile(self.internal_kinetic_energy, inventory_object)
 		
 		self.inventory = []
+		
+		if self.size > DEFAULT_SIZE_OF_MATERIAL_COMPONENTS:
+			# Debug final
+			# Temporarily remove sized based components
+			#for i in range(0, int(self.size / DEFAULT_SIZE_OF_MATERIAL_COMPONENTS / 2)):
+			for i in range(0, libtcod.random_get_int(0, 0, 2)):
+				self.components.append(self.material)
+				
+		if cause_of_destroy <> 'Fire':
+			for component_name in self.components:
 
-		for component_name in self.components:
+				dropped_component_object = get_object_by_name(component_name)
 
-			dropped_component_object = get_object_by_name(component_name)
+				if dropped_component_object.on_fire:
+					objects_on_fire.append(dropped_component_object)
+					map[dropped_component_object.x][dropped_component_object.y].set_on_fire()
 
-			if dropped_component_object.on_fire:
-				objects_on_fire.append(dropped_component_object)
-				map[dropped_component_object.x][dropped_component_object.y].set_on_fire()
-
-			place_object_at_location(dropped_component_object, self.x, self.y, stack_objects_allowed = False, force_placement_success = True)
-			process_projectile(self.internal_kinetic_energy, dropped_component_object)
+				place_object_at_location(dropped_component_object, self.x, self.y, stack_objects_allowed = False, force_placement_success = True)
+				process_projectile(self.internal_kinetic_energy, dropped_component_object)
 
 		self.components = []
 		
 		# Arms and legs fall off!
 		if self.unit:
 		
+			if self.unit.creature_type == 'Humanoid':
+				scoreboard.humanoid_killed()
+			elif self.unit.creature_type == 'Animal':
+				scoreboard.dog_killed()
+			elif self.unit.the_thing:
+				scorebaord.the_thing_killed()
+			
+		
 			death_sound.play()
 			
 			my_appendages = [self.unit.head, self.unit.torso, self.unit.larm, self.unit.rarm, self.unit.lleg, self.unit.rleg]
 			
 			for appendage in my_appendages:
-				
+				appendage.name = self.name + "'s " + appendage.name
 				place_object_at_location(appendage, self.x, self.y, stack_objects_allowed = False, force_placement_success = True)
 				process_projectile(self.internal_kinetic_energy, appendage)
 				
+			if self == player:
 				
-			if player.destroyed:
-				Message('Player has been killed.', 'Narrator', relevant_objects = None)
-				render_all()
+				menu_prompt(written_text = 'Player has been killed')
+				end_game_return_to_main_menu()
 				return True
-				
-			remove_all_connections_to_object(self)
-			
-			if self.unit.the_thing:
-				choice = menu('The Thing has died!  Keep playing?', None, ['Yes', 'No'], clear_window_after_display = False)
 
-				if choice == 0:
+			if self.unit.the_thing:
+				
+				choice = menu_prompt(options = ['Yes', 'No'], written_text = 'The Thing has died!  Keep playing?')
+
+				if choice == 'Yes':
 					pass
 				else:
 					end_game_return_to_main_menu()
-					
-			del self
+				
+		remove_all_connections_to_object(self)
+
+		del self
 		
 		return True
 		
@@ -1549,8 +1949,6 @@ class Projectile_In_Motion:
 				pass
 			else:
 				process_collision(self.projectile_object, collision_object, self.velocity)
-				objects_in_motion.remove(self)
-				del self
 				return True
 		
 		previous_x = self.projectile_object.x
@@ -1567,11 +1965,9 @@ class Projectile_In_Motion:
 
 		# If the object reaches its destination
 		if (self.projectile_object.x == self.destination_tile_x and self.projectile_object.y == self.destination_tile_y):
-			objects_in_motion.remove(self)
-			del self
 			return True
 
-		return True
+		return False
 
 def process_projectile(energy_force, projectile_object, specific_target_object_or_tile = None, accuracy_modifier = 0, pass_through_object = None):
 	global player, objects_in_motion
@@ -1606,6 +2002,8 @@ def process_projectile(energy_force, projectile_object, specific_target_object_o
 		
 		destination_tile_x = normalize_to_map_width(projectile_object.x + dx)
 		destination_tile_y = normalize_to_map_height(projectile_object.y + dy)
+		
+		specific_target_object_or_tile = map[destination_tile_x][destination_tile_y]
 	
 	this_moving_object = Projectile_In_Motion(projectile_object, specific_target_object_or_tile, velocity, accuracy_modifier, pass_through_object, destination_tile_x, destination_tile_y)
 	
@@ -1776,6 +2174,7 @@ class Unit:
 		self.backstory_dialogue = None
 		
 		self.feelings_for = []
+	
 		
 	def try_to_manoeuvre(self, dx, dy, minimum_size_reduction_percent = 25, maximum_size_reduction_percent = 50, return_success_chance = False):
 		
@@ -1862,43 +2261,49 @@ class Unit:
 		self.head = copy.deepcopy(generic_appendage)
 		self.head.char = 'h'
 		self.head.size = float(self.owner.size * DEFAULT_HEAD_SIZE)
-		self.head.name = self.owner.name + "'s head"
+		self.head.name = "Head"
 		self.head.establish_properties()
+		self.head.appendage_of = self.owner
 		
 		# Torso
 		self.torso = copy.deepcopy(generic_appendage)
 		self.torso.char = 'T'
 		self.torso.size = float(self.owner.size * DEFAULT_TORSO_SIZE)
-		self.torso.name = self.owner.name + "'s torso"
+		self.torso.name = "Torso"
 		self.torso.establish_properties()
+		self.torso.appendage_of = self.owner
 		
 		# Left arm
 		self.larm = copy.deepcopy(generic_appendage)
 		self.larm.char = 'a'
 		self.larm.size = float(self.owner.size * DEFAULT_LARM_SIZE)
-		self.larm.name = self.owner.name + "'s left arm"
+		self.larm.name = "Left Arm"
 		self.larm.establish_properties()
+		self.larm.appendage_of = self.owner
 		
 		# Right arm
 		self.rarm = copy.deepcopy(generic_appendage)
 		self.rarm.char = 'a'
 		self.rarm.size = float(self.owner.size * DEFAULT_RARM_SIZE)
-		self.rarm.name = self.owner.name + "'s right arm"
+		self.rarm.name = "Right Arm"
 		self.rarm.establish_properties()
+		self.rarm.appendage_of = self.owner
 		
 		# Left leg
 		self.lleg = copy.deepcopy(generic_appendage)
 		self.lleg.char = 'l'
 		self.lleg.size = float(self.owner.size * DEFAULT_LLEG_SIZE)
-		self.lleg.name = self.owner.name + "'s left leg"
+		self.lleg.name = "Left Leg"
 		self.lleg.establish_properties()
+		self.lleg.appendage_of = self.owner
 		
 		# Right leg
 		self.rleg = copy.deepcopy(generic_appendage)
 		self.rleg.char = 'l'
 		self.rleg.size = float(self.owner.size * DEFAULT_RLEG_SIZE)
-		self.rleg.name = self.owner.name + "'s right leg"
+		self.rleg.name = "Right Leg"
 		self.rleg.establish_properties()
+		self.rleg.appendage_of = self.owner
 
 
 
@@ -1941,6 +2346,13 @@ class Unit:
 		if self.owner.condition < 0:
 			self.owner.condition = 0
 			
+	def flag_turn_taken(self):
+		global scoreboard
+		self.turn_taken = True
+		if self.owner == player:
+			scoreboard.session_turns_taken += 1
+		
+			
 	def take_turn(self):
 		global player, fov_map
 
@@ -1951,7 +2363,7 @@ class Unit:
 		if self.owner.destroyed:
 			return False
 
-		self.turn_taken = True
+		self.flag_turn_taken()
 
 		if self.owner.task_queue:	
 			if ACTIVATE_FUNCTION_TIMERS: time_variable = start_test()
@@ -2056,36 +2468,42 @@ class Unit:
 
 	def attack(self, target_object_or_tile = None, test = False):
 	
+	
 		if ACTIVATE_FUNCTION_TIMERS: attack_timer = start_test()
 		
 		if isinstance(target_object_or_tile, Tile):
-			target_object_or_tile = pick_largest(target_object_or_tile.objects_on_this_tile)
+			object_on_tile = pick_largest(target_object_or_tile.objects_on_this_tile)
+			if object_on_tile:
+				target_object_or_tile = object_on_tile
 			
-		target_object = target_object_or_tile
-			
-		if not target_object:
-			Message('Nothing to attack', 'Narrator', relevant_objects = [self.owner])
-			return False
-			
-		if self.the_thing:
+		if self.the_thing and isinstance(target_object_or_tile, Object):
 			if target_object_or_tile.unit:
-				other_units_nearby = target_object.unit.get_nearest_objects(range = MAX_VISIBILITY_RADIUS, type = 'Units', maximum_results = 2, sort_by_distance = False)
+				other_units_nearby = target_object_or_tile.unit.get_nearest_objects(range = MAX_VISIBILITY_RADIUS, type = 'Units', maximum_results = 2, sort_by_distance = False)
 				if self.owner in other_units_nearby:
 					other_units_nearby.remove(self.owner)	
 				if len(other_units_nearby) >= 2:
 					self.owner.cancel_all_tasks()
 					return False
-			
+	
 		if not self.owner.equipped:
-			self.owner.equipped = self.owner.unit.rarm
-		
-		if test:
+			self.equip()
+			# If there is nothing left to equip, give up on attack
+			if not self.owner.equipped:
+				Message(self.owner.name + ' has no working limbs left.', 'Narrator', relevant_objects = [self.owner])
+				return False
+					
+		if test and isinstance(target_object_or_tile, Object):
 			test_damage = 0
 			velocity = calculate_velocity(self.throw_weight, self.owner.equipped.weight)
-			test_damage = process_collision(self.owner.equipped, target_object, velocity, test=test)
+			test_damage = process_collision(self.owner.equipped, target_object_or_tile, velocity, test = test)
 			return test_damage
 			
-		Message(self.owner.name + ' attacks ' + target_object.name + '.', 'Action', relevant_objects=[self.owner, target_object])
+		if self.owner.distance_to(target_object_or_tile) > self.owner.equipped.attack_range:
+			Message('Target is too far away.', 'Narrator', relevant_objects = [self.owner])
+			return False
+		
+		if isinstance(target_object_or_tile, Object):
+			Message(self.owner.name + ' attacks ' + target_object_or_tile.name + '.', 'Action', relevant_objects=[self.owner, target_object_or_tile])
 
 		if self.owner.equipped.attack_function:
 
@@ -2103,26 +2521,29 @@ class Unit:
 				return False
 			else:
 				dropped_ammunition = self.drop(ammunition, 1)
-				process_projectile(self.owner.equipped.internal_kinetic_energy, dropped_ammunition, target_object, accuracy_modifier = 5)
+				process_projectile(self.owner.equipped.internal_kinetic_energy, dropped_ammunition, target_object_or_tile, accuracy_modifier = 5)
 				gun_sound.play()
 				return True
-		else:
-
+		elif isinstance(target_object_or_tile, Object):
 			velocity = calculate_velocity(self.throw_weight, self.owner.equipped.weight)
 			previous_state = self.owner.equipped.indestructible
-			self.owner.equipped.indestructible = True
-			process_collision(self.owner.equipped, target_object, velocity)
-			self.owner.equipped.indestructible = previous_state
+			self.owner.equipped.indestructible = 0.1
+			process_collision(self.owner.equipped, target_object_or_tile, velocity)
+			if self.owner.equipped:
+				self.owner.equipped.indestructible = previous_state
+		else:
+			Message('Nothing to attack.', 'Narrator', relevant_objects = [self.owner])
+			return False
 
 			
-		if self.the_thing:
+		if self.the_thing and isinstance(target_object_or_tile, Object):
 			if not self.the_thing_revealed:
 				self.reveal_the_thing()
 		
-			if target_object.destroyed:
-				if not target_object == player:
-					if target_object.unit:
-						Message(target_object.name + ' has been absorbed.', 'Narrator', relevant_objects = [self.owner, target_object])
+			if target_object_or_tile.destroyed:
+				if not target_object_or_tile == player:
+					if target_object_or_tile.unit:
+						Message(target_object_or_tile.name + ' has been absorbed.', 'Narrator', relevant_objects = [self.owner, target_object_or_tile])
 						
 						# The thing gets more massive as it absorbs stuff -- strength will increase by default because weight has increased
 						self.update_strength(self.strength * 2)
@@ -2157,28 +2578,28 @@ class Unit:
 
 		task_options = ['Examine Object', 'Move to Object', 'Find and Collect Object', 'Attack Object', 'Fetch Object for Object', 'Take Object to Object', 'Deliver Message to Object', 'Tell me about yourself...']
 
-		chosen_response_index = menu(spoken_to_object.name + ': What do you want me to do?', None, task_options)
+		
+		chosen_response = menu_prompt(options = task_options, written_text = spoken_to_object.name + ': What do you want me to do?')
 
-		if chosen_response_index >= 0:
-			chosen_response = task_options[chosen_response_index]
+		if chosen_response:
 
 			if chosen_response == 'Move to Object' or chosen_response == 'Find and Collect Object' or chosen_response == 'Attack Object' or chosen_response == 'Examine Object':
-				object_moving_to = prompt_to_choose_object(nearest_objects, chosen_response + "?")
+				object_moving_to = menu_prompt(options = nearest_objects, written_text = chosen_response + "?")
 				object_to_interact_with = object_moving_to
 				if chosen_response == 'Find and Collect Object':
 					quantity = prompt_for_quantity(object_to_interact_with)
 				object_source_of_task = object_moving_to
 
 			elif chosen_response == 'Fetch Object for Object':
-				object_moving_to = prompt_to_choose_object(nearest_objects, "Which object do you want fetched?")
+				object_moving_to = menu_prompt(options = nearest_objects, written_text = "Which object do you want fetched?")
 				object_to_interact_with = object_moving_to
 				quantity = prompt_for_quantity(object_to_interact_with)
-				object_source_of_task = prompt_to_choose_object(nearest_units, "Who are you delivering to?")
+				object_source_of_task = menu_prompt(options = nearest_units, written_text = "Who are you delivering to?")
 
 			elif chosen_response == 'Take Object to Object':
-				object_to_interact_with = prompt_to_choose_object(self.owner.inventory, "Which object are you delivering?")
+				object_to_interact_with = menu_prompt(options = self.owner.inventory, written_text = "Which object are you delivering?")
 				quantity = prompt_for_quantity(object_to_interact_with)
-				object_moving_to = prompt_to_choose_object(nearest_units, "Who are you delivering to?")
+				object_moving_to = menu_prompt(options = nearest_units, written_text = "Who are you delivering to?")
 
 				if not object_to_interact_with:
 					print 'Nothing in inventory.'
@@ -2189,12 +2610,14 @@ class Unit:
 				object_source_of_task = object_moving_to
 
 			elif chosen_response == 'Deliver Message to Object':
-				object_moving_to = prompt_to_choose_object(nearest_units, "Who are you delivering to?")
+				object_moving_to = menu_prompt(options = nearest_units, written_text = "Who are you delivering to?")
 				object_to_interact_with = object_moving_to
 				object_source_of_task = object_moving_to
-				task_message_index = menu("What do you want me to say?", None, all_dialogue)
-				if task_message_index >= 0:
-					task_message_ID = all_dialogue_IDs[task_message_index]
+				
+				task_message = menu_prompt(options = nearest_units, written_text = "What do you want me to say?")
+				
+				if task_message:
+					task_message_ID = task_message
 				else:
 					print 'Did not give a message to deliver'
 					return False
@@ -2332,6 +2755,9 @@ class Unit:
 			if maximum_results:
 				if len(final_list_sorted_by_distance) >= maximum_results:
 					break
+		
+		# MAke so the player's FOV is again the default
+		libtcod.map_compute_fov(fov_map, player.x, player.y, MAX_VISIBILITY_RADIUS, FOV_LIGHT_WALLS, FOV_ALGO)
 
 		return final_list_sorted_by_distance
 
@@ -2343,6 +2769,11 @@ class Unit:
 	
 		if not object_to_pick_up:
 			return False
+			
+		if self.owner.distance_to(object_to_pick_up) > 1.5:
+			Message(object_to_pick_up.name + ' is not within reach.', 'Narrator', relevant_objects=[self.owner, object_to_pick_up])
+			return False
+		
 			
 		if object_to_pick_up.unit:
 			Message('Cannot add units to inventory,', 'Narrator', relevant_objects=[self.owner, object_to_pick_up])
@@ -2357,7 +2788,7 @@ class Unit:
 			return False
 		
 		if self.owner.my_total_weight(inventory_only = True) + (object_to_pick_up.weight * quantity) > self.owner.weight:
-			Message(object_to_pick_up.name + ' is already carrying too much to pick up ' + object_to_pick_up.name + '.', 'Action', relevant_objects=[self.owner, object_to_pick_up])
+			Message(self.owner.name + ' is already carrying too much to pick up ' + object_to_pick_up.name + '.', 'Action', relevant_objects=[self.owner, object_to_pick_up])
 			return False
 			
 		
@@ -2390,7 +2821,15 @@ class Unit:
 
 	def grab(self, object_to_grab, quantity = None):
 	
+		if self.holding:
+			self.let_go()
+			return True
+	
 		if not object_to_grab:
+			return False
+			
+		if self.owner.distance_to(object_to_grab) > 1.5:
+			Message(object_to_grab.name + ' is not within reach.', 'Narrator', relevant_objects=[self.owner, object_to_grab])
 			return False
 		
 		object_to_grab = object_to_grab.take_from_stack(quantity)
@@ -2406,49 +2845,113 @@ class Unit:
 		self.holding = None
 		return True
 
-	def equip(self, equipped_object):
-		if equipped_object in self.owner.inventory:
-			self.owner.equipped = equipped_object
-			equipped_object.equipped_to = self.owner
+	def equip(self, equipped_object = None):
+		global light_sources
+		
+		# Unequip
+		if self.owner.equipped == equipped_object or equipped_object == None:
+			
+			if self.owner.equipped:
+				self.owner.equipped.equipped_to = None
+			
+			
+			if not self.owner.unit.rarm.destroyed:
+				self.owner.equipped = self.owner.unit.rarm
+			elif not self.owner.unit.larm.destroyed:
+				self.owner.equipped = self.owner.unit.larm
+			elif not self.owner.unit.rleg.destroyed:
+				self.owner.equipped = self.owner.unit.rleg
+			elif not self.owner.unit.lleg.destroyed:
+				self.owner.equipped = self.owner.unit.lleg
+			elif not self.owner.unit.head.destroyed:
+				self.owner.equipped = self.owner.unit.head
+			else:
+				self.owner.equipped = None
+				return False
+				
+			self.owner.equipped.equipped_to = self.owner
 			return True
 		else:
-			Message('Cannot equip item unless in inventory.', 'Action', relevant_objects=[self.owner, equipped_object])
+			if not equipped_object in self.owner.inventory:
+				success = self.pick_up(equipped_object, quantity = 1)
+				if not success:
+					Message('Cannot equip item unless in inventory.', 'Action', relevant_objects=[self.owner, equipped_object])
+					return False
+			
+			self.owner.equipped = equipped_object
+			equipped_object.equipped_to = self.owner
+			if equipped_object.light_source:
+				light_sources.append(equipped_object)
+			return True
 
-		return False
 
 
 def calculate_velocity(throw_weight, weight):
+	if weight < 1: weight = 1
 	velocity = int(throw_weight / weight)
+	velocity = math.sqrt(velocity)
+	if velocity < 1: velocity = 1
 	return velocity
 	
-def calculate_damage(object_source, object_receive, velocity):
-		total_damage = float(object_source.weight * velocity)
+def calculate_damage(object_1, object_2, collision_kinetic_energy):
+
+		test_damage = False
+
+		total_damage = float(collision_kinetic_energy * 3)
 		
-		damage_resistance_due_to_weight = float(object_receive.weight / 1000.0)
-		damage_resistance_due_to_resistance = float(get_material_stats_by_name(object_receive.material, 'Break Resistance') / 100.0)
+		object_1_damage_resistance_due_to_weight = float(object_1.weight / 1000.0)
+		object_1_damage_resistance_due_to_resistance = float(get_material_stats_by_name(object_1.material, 'Break Resistance') / 100.0)
+		object_1_total_damage_resistance = object_1_damage_resistance_due_to_weight * object_1_damage_resistance_due_to_resistance
 		
-		total_damage -= (total_damage * damage_resistance_due_to_weight)
-		total_damage -= (total_damage * damage_resistance_due_to_resistance)
+		object_2_damage_resistance_due_to_weight = float(object_2.weight / 1000.0)
+		object_2_damage_resistance_due_to_resistance = float(get_material_stats_by_name(object_2.material, 'Break Resistance') / 100.0)
+		object_2_total_damage_resistance = object_2_damage_resistance_due_to_weight * object_2_damage_resistance_due_to_resistance
+		
+		object_1_percent_of_damage = float(object_1_total_damage_resistance / (object_1_total_damage_resistance + object_2_total_damage_resistance))
+		object_2_percent_of_damage = float(object_2_total_damage_resistance / (object_1_total_damage_resistance + object_2_total_damage_resistance))
+
+		object_1_damage = object_2_percent_of_damage * total_damage
+		object_2_damage = object_1_percent_of_damage * total_damage
+
+		object_1_final_damage = int(object_1.indestructible * object_1_damage)
+		object_2_final_damage = int(object_2.indestructible * object_2_damage)
+		
+		if test_damage and object_2.name == 'Lamp':
+			print 'total damage'+ str(total_damage)
+			print 'ob1'
+			print 'name ' + str(object_1.name)
+			print 'weight resis ' + str(object_1_damage_resistance_due_to_weight)
+			print 'resis resis' + str(object_1_damage_resistance_due_to_resistance)
+			print 'final resis ' + str(object_1_total_damage_resistance)
+			print 'total percent ' + str(object_1_percent_of_damage)
+			print ''
+			print 'ob2'
+			print 'name ' + str(object_2.name)
+			print 'weight resis ' + str(object_2_damage_resistance_due_to_weight)
+			print 'resis resis' + str(object_2_damage_resistance_due_to_resistance)
+			print 'final resis ' + str(object_2_total_damage_resistance)
+			print 'total percent ' + str(object_2_percent_of_damage)
+			print '------'
+
 			
-		return total_damage
+			
+		return (object_1_final_damage, object_2_final_damage)
 			
 
 def process_collision(moving_object, collided_object, velocity, test = False):
-	global impact_sound
+	global impact_sound, fov_recompute
 
 	if ACTIVATE_FUNCTION_TIMERS: collision_timer = start_test()
 
-	raw_collided_object_damage = 0
-	raw_moving_object_damage = 0
+	collision_kinetic_energy = moving_object.weight * velocity
 	
-	if not collided_object.indestructible:
-		raw_collided_object_damage = calculate_damage(object_source = moving_object, object_receive = collided_object, velocity = velocity)
+	(moving_object_damage, collided_object_damage) = calculate_damage(moving_object, collided_object, collision_kinetic_energy)
+	
+	moving_object_damage = normalize_damage(moving_object_damage)
+	collided_object_damage = normalize_damage(collided_object_damage)
 	
 	if test:
-		return normalize_damage(raw_collided_object_damage)
-	
-	if not moving_object.indestructible:
-		raw_moving_object_damage = calculate_damage(object_source = collided_object, object_receive = moving_object, velocity = velocity)
+		return collided_object_damage
 
 	if moving_object.quantity > 1:
 		original_x = moving_object.x
@@ -2459,19 +2962,34 @@ def process_collision(moving_object, collided_object, velocity, test = False):
 	if collided_object.quantity > 1:
 		collided_object = collided_object.take_from_stack(1)
 		place_object_at_location(collided_object, moving_object.x, moving_object.y, stack_objects_allowed = False)
-	
-	collided_object_damage = normalize_damage(raw_collided_object_damage)
-	moving_object_damage = normalize_damage(raw_moving_object_damage)
 
 	collided_object.condition -= collided_object_damage
 	moving_object.condition -= moving_object_damage
+	
+	if collided_object.appendage_of:
+		collided_object.process_limb_damage_to_body(collided_object_damage, impact_force = collision_kinetic_energy)
+	if moving_object.appendage_of:
+		moving_object.process_limb_damage_to_body(moving_object_damage, impact_force = collision_kinetic_energy)
+	
+	if collided_object.condition < 0: collided_object.condition = 0
+	if moving_object.condition < 0: moving_object.condition = 0
 
 	if libtcod.map_is_in_fov(fov_map, collided_object.x, collided_object.y):
-		impact_sound.play()
-	Message(moving_object.name + ' collides with ' + collided_object.name + '. ' + moving_object.name + ' takes ' + str(moving_object_damage) + ' damage and ' + collided_object.name + ' takes ' + str(collided_object_damage) + ' damage.', 'Action', relevant_objects = [collided_object, moving_object])
-	
-	collided_object.check_if_destroyed(impact_force = raw_collided_object_damage)
-	moving_object.check_if_destroyed(impact_force = raw_moving_object_damage)
+		collided_object.play_impact_sound(collided_object_damage)
+		moving_object.play_impact_sound(moving_object_damage)
+		Message(moving_object.name + ' collides with ' + collided_object.name + '. ' + moving_object.name + ' takes ' + str(moving_object_damage) + ' damage and ' + collided_object.name + ' takes ' + str(collided_object_damage) + ' damage.', 'Action', relevant_objects = [collided_object, moving_object])
+		
+		if collided_object_damage > 0: collided_object.foreground_colour = collided_object.foreground_colour * EXPLORED_TILE_COLOUR_DESATURATION
+		if moving_object_damage > 0: moving_object.foreground_colour = moving_object.foreground_colour * EXPLORED_TILE_COLOUR_DESATURATION
+		
+		fov_recompute = True
+		render_all()
+		
+		collided_object.foreground_colour = collided_object.previous_foreground_colour
+		moving_object.foreground_colour = moving_object.previous_foreground_colour
+		
+	collided_object.check_if_destroyed(impact_force = collision_kinetic_energy)
+	moving_object.check_if_destroyed(impact_force = collision_kinetic_energy)
 	
 	if ACTIVATE_FUNCTION_TIMERS: end_test(collision_timer, moving_object.name + ' process collision')
 
@@ -2611,8 +3129,6 @@ def pick_largest(list_of_objects, exclude_units = False):
 	return largest_object
 	
 
-
-
 def try_to_stack(list_of_objects, new_object):
 	if new_object.stackable:
 		for object in list_of_objects:
@@ -2683,6 +3199,9 @@ def place_object_at_location(object_to_place, x, y, stack_objects_allowed = True
 def remove_all_connections_to_object(object_to_remove):
 	global map, affixed_objects, non_affixed_objects, units, light_sources
 	
+	if not object_to_remove.x and not object_to_remove.y:
+		return True
+
 	object_to_remove.held_by = None
 
 	if object_to_remove.equipped_to:
@@ -2775,10 +3294,8 @@ def process_action(action_being_taken, object_taking_action=None, object_being_a
 			quantity = prompt_for_quantity(object_being_targeted)
 	if action_being_taken == 'Pick Up':
 		return object_taking_action.unit.pick_up(object_being_targeted, quantity)
-	elif action_being_taken == 'Grab':
+	elif action_being_taken == 'Grab / Release':
 		return object_taking_action.unit.grab(object_being_targeted)
-	elif action_being_taken == 'Release':
-		return object_taking_action.unit.let_go()
 	elif action_being_taken == 'Drop':
 		return object_taking_action.unit.drop(object_being_targeted, quantity)
 	elif action_being_taken == 'Consume':
@@ -2787,13 +3304,13 @@ def process_action(action_being_taken, object_taking_action=None, object_being_a
 		return object_taking_action.unit.attack(target_object_or_tile = object_being_targeted)
 	elif action_being_taken == 'Give Object':
 		if object_being_targeted.check_if_unlocked():
-			selected_object = prompt_to_choose_object(object_taking_action.inventory)
+			selected_object = menu_prompt(options = object_taking_action.inventory)
 			if selected_object:
 				quantity = prompt_for_quantity(selected_object)
 				return object_being_targeted.take_object_from_inventory(object_taking_action, selected_object, quantity)
 	elif action_being_taken == 'Take Object':
 		if object_being_targeted.check_if_unlocked():
-			selected_object = prompt_to_choose_object(object_being_targeted.inventory)
+			selected_object = menu_prompt(options = object_being_targeted.inventory)
 			if selected_object:
 				quantity = prompt_for_quantity(selected_object)
 				return object_taking_action.take_object_from_inventory(object_being_targeted, selected_object, quantity)
@@ -3085,7 +3602,8 @@ def place_objects(room, room_type):
 					x = libtcod.random_get_int(0, room.x1 + 1, room.x2 - 1)
 					y = libtcod.random_get_int(0, room.y1 + 1, room.y2 - 1)
 					if not is_blocked(x, y, placed_object):
-						break
+						if not 'Hallway' in get_adjacent_stuff(x, y, 'Room Names'):
+							break
 
 					number_of_attempts += 1
 
@@ -3097,37 +3615,6 @@ def place_objects(room, room_type):
 
 	return True
 
-
-def render_bar(x, y, chosen_panel, total_width, name, value, maximum, bar_colour, back_colour):
-	# render a bar (HP, experience, etc). first calculate the width of the bar
-	bar_width = int(float(value) / maximum * total_width)
-
-	# render the background first
-	libtcod.console_set_default_background(chosen_panel, back_colour)
-	libtcod.console_rect(chosen_panel, x, y, total_width, 1, False, libtcod.BKGND_SCREEN)
-
-	# now render the bar on top
-	libtcod.console_set_default_background(chosen_panel, bar_colour)
-	if bar_width > 0:
-		libtcod.console_rect(chosen_panel, x, y, bar_width, 1, False, libtcod.BKGND_SCREEN)
-
-	# finally, some centered text with the values
-	libtcod.console_set_default_foreground(chosen_panel, libtcod.white)
-	libtcod.console_print_ex(chosen_panel, x + total_width / 2, y, libtcod.BKGND_NONE, libtcod.CENTER,
-							 name + ': ' + str(value) + '/' + str(maximum))
-
-
-def get_objects_under_mouse():
-	global mouse
-	# return a string with the names of all objects under the mouse
-
-	(x, y) = (mouse.cx, mouse.cy)
-	if x < MAP_WIDTH and y < MAP_HEIGHT:
-		objects_under_mouse = [obj for obj in map[x][y].objects_on_this_tile]
-		return objects_under_mouse
-	else:
-		return False
-		
 def room_name_under_mouse():
 	global mouse
 	# return a string with the names of all objects under the mouse
@@ -3152,318 +3639,7 @@ def end_test(time_variable, function_name):
 	now = time.time()
 	if float(now - time_variable) > MINIMUM_PROCESS_TIME_TO_ALERT:
 		print("{0} seconds".format(round(now - time_variable, 2))) + ' to run ' + function_name
-
-def render_all():
-	global fov_map
-	global fov_recompute
-	global clicked_object_name
-	global panel
-	global map
-	global message_scroll_button
-	global message_scroll_state
-	global light_source_fov_maps
-	global light_sources
 	
-	if not player: libtcod.console_clear(con)
-
-	if fov_recompute:
-		# recompute FOV if needed (the player moved or something)
-		initialize_fov()
-		fov_recompute = False
-		
-		for y in range(MAP_HEIGHT):
-			for x in range(MAP_WIDTH):
-				map[x][y].illuminated = False
-				map[x][y].illuminated_left = False
-				map[x][y].illuminated_down = False
-				map[x][y].illuminated_right = False
-				map[x][y].illuminated_up = False
-		
-		
-		
-		for light_source in light_sources:
-			if light_source.distance_to(player) <= MAX_VISIBILITY_RADIUS + light_source.light_radius:
-				libtcod.map_compute_fov(fov_map, light_source.x, light_source.y, light_source.light_radius, FOV_LIGHT_WALLS, FOV_ALGO)
-
-				for y in range(normalize_to_map_height(light_source.y - light_source.light_radius), normalize_to_map_height(light_source.y + light_source.light_radius)):
-					for x in range(normalize_to_map_width(light_source.x - light_source.light_radius), normalize_to_map_width(light_source.x + light_source.light_radius)):
-						visible = libtcod.map_is_in_fov(fov_map, x, y)
-						if visible:
-
-							map[x][y].illuminated = True
-
-							if len(map[x][y].objects_on_this_tile) > 0:
-								if map[x][y].check_blocks_sight():
-									right_blocked = map[x + 1][y].check_blocks_sight()
-									down_blocked = map[x][y + 1].check_blocks_sight()
-									left_blocked = map[x - 1][y].check_blocks_sight()
-									up_blocked = map[x][y - 1].check_blocks_sight()
-									
-									map[x][y].illuminated = False
-									if light_source.x > x and not right_blocked: map[x][y].illuminated_right = True
-									if light_source.y > y and not down_blocked: map[x][y].illuminated_down = True
-									if light_source.x < x and not left_blocked: map[x][y].illuminated_left = True
-									if light_source.y < y and not up_blocked: map[x][y].illuminated_up = True
-
-						
-		libtcod.map_compute_fov(fov_map, player.x, player.y, MAX_VISIBILITY_RADIUS, FOV_LIGHT_WALLS, FOV_ALGO)
-			
-		for y in range(MAP_HEIGHT):
-			for x in range(MAP_WIDTH):
-				map[x][y].render_me()
-
-	# Prepare the four panels
-	libtcod.console_print_frame(con, 0, 0, MAP_WIDTH, MAP_HEIGHT, libtcod.BKGND_NONE, libtcod.CENTER, None)
-
-	libtcod.console_set_default_foreground(panel, libtcod.white)
-	libtcod.console_set_default_background(panel, libtcod.black)
-	libtcod.console_clear(panel)
-	libtcod.console_print_frame(panel, 0, 0, OBJECT_INFO_BAR_WIDTH, PANEL_HEIGHT, libtcod.BKGND_NONE, libtcod.CENTER, None)
-	
-	libtcod.console_set_default_foreground(object_panel, libtcod.white)
-	libtcod.console_set_default_background(object_panel, libtcod.black)
-	libtcod.console_clear(object_panel)
-	libtcod.console_print_frame(object_panel, 0, 0, OBJECT_INFO_BAR_WIDTH, MAP_HEIGHT, libtcod.BKGND_NONE, libtcod.CENTER, "Object Info")
-	
-	libtcod.console_set_default_foreground(message_panel, libtcod.white)
-	libtcod.console_set_default_background(message_panel, libtcod.black)
-	libtcod.console_clear(message_panel)
-	libtcod.console_print_frame(message_panel, 0, 0, MESSAGE_PANEL_WIDTH, PANEL_HEIGHT, libtcod.BKGND_NONE, libtcod.CENTER, None)
-	
-	if player:
-
-		# show the player's stats
-		render_bar(1, 1, panel, OBJECT_INFO_BAR_WIDTH - 2, 'Condition', player.condition, 100, libtcod.light_red, libtcod.darker_red)
-		if player.equipped:
-			libtcod.console_print_ex(panel, 1, 13, libtcod.BKGND_NONE, libtcod.LEFT, 'Equipped: ' + player.equipped.name)
-
-		# display names of objects under the mouse
-		libtcod.console_set_default_foreground(panel, libtcod.light_gray)
-		objects_under_mouse = get_objects_under_mouse()
-		room_name_here = room_name_under_mouse()
-		if objects_under_mouse:
-			libtcod.console_print_ex(panel, 1, 10, libtcod.BKGND_NONE, libtcod.LEFT, objects_under_mouse[0].name + ':' + str(objects_under_mouse[0].ID))
-			libtcod.console_print_ex(panel, 1, 11, libtcod.BKGND_NONE, libtcod.LEFT, room_name_here)
-			
-		libtcod.console_print_ex(panel, 1, 12, libtcod.BKGND_NONE, libtcod.LEFT, 'my weight: ' + str(player.my_total_weight()))
-
-		# display current room
-		libtcod.console_print_ex(panel, 1, 14, libtcod.BKGND_NONE, libtcod.LEFT, 'Room: ' + str(map[player.x][player.y].room_name))
-
-		libtcod.console_print_ex(panel, 1, 15, libtcod.BKGND_NONE, libtcod.LEFT, 'Grab: E')
-		libtcod.console_print_ex(panel, 1, 16, libtcod.BKGND_NONE, libtcod.LEFT, 'Open/Close: R')
-		libtcod.console_print_ex(panel, 1, 17, libtcod.BKGND_NONE, libtcod.LEFT, 'Pick Up: F')
-		libtcod.console_print_ex(panel, 1, 18, libtcod.BKGND_NONE, libtcod.LEFT, 'Lock/Unlock: C')
-		libtcod.console_print_ex(panel, 1, 16, libtcod.BKGND_NONE, libtcod.LEFT, 'Activate/Deactivate: V')
-		
-		if ACTIVATE_FUNCTION_TIMERS: game_message = start_test()
-			
-		# print the game messages, one line at a time
-		y = MSG_HEIGHT - 1
-		previous_ID = None
-		previous_colour = None
-		
-		if message_scroll_button == 'Click Up':
-			message_scroll_state += 1
-		elif message_scroll_button == 'Click Down':
-			message_scroll_state -= 1
-
-		if message_scroll_state > len(game_msgs) - (PANEL_HEIGHT - 2): message_scroll_state = len(game_msgs) - (PANEL_HEIGHT - 2)
-		if message_scroll_state < 0: message_scroll_state = 0
-
-		for i in reversed(range(0, len(game_msgs) - message_scroll_state)):
-			
-			current_message = game_msgs[i]
-			
-			if current_message.ID <> previous_ID:
-				if not current_message.colour:
-					current_message.colour = current_message_colour(current_message.type)
-			else:
-				current_message.colour = previous_colour
-
-			libtcod.console_set_default_foreground(message_panel, current_message.colour)
-			libtcod.console_print_ex(message_panel, 1, y, libtcod.BKGND_NONE, libtcod.LEFT, current_message.text)
-			current_message.y = MAP_HEIGHT + y
-
-			y -= 1
-			
-			previous_ID = current_message.ID
-			previous_colour = current_message.colour
-
-			if y == 0:
-				break
-		
-		if message_scroll_button == 'Highlight Up':
-			libtcod.console_set_default_foreground(message_panel, libtcod.green)
-		else: 
-			libtcod.console_set_default_foreground(message_panel, libtcod.white)
-		libtcod.console_print_ex(message_panel, MESSAGE_PANEL_WIDTH - 2, 1, libtcod.BKGND_NONE, libtcod.LEFT, '^')
-		
-		if message_scroll_button == 'Highlight Down':
-			libtcod.console_set_default_foreground(message_panel, libtcod.green)
-		else:
-			libtcod.console_set_default_foreground(message_panel, libtcod.white)
-		libtcod.console_print_ex(message_panel, MESSAGE_PANEL_WIDTH - 2, PANEL_HEIGHT - 2, libtcod.BKGND_NONE, libtcod.LEFT, 'V')
-				
-		if ACTIVATE_FUNCTION_TIMERS: end_test(game_message, 'printing game msgs')
-
-		if selected_object:
-			libtcod.console_print_ex(object_panel, 1, 3, libtcod.BKGND_NONE, libtcod.LEFT, 'Name: ' + selected_object.name )
-			libtcod.console_print_ex(object_panel, 1, 4, libtcod.BKGND_NONE, libtcod.LEFT, 'ID: ' + str(selected_object.ID) )
-			
-			if selected_object.unit:
-				libtcod.console_print_ex(object_panel, 1, 6, libtcod.BKGND_NONE, libtcod.LEFT, 'throw weight: ' + str(selected_object.unit.throw_weight))
-				
-			libtcod.console_print_ex(object_panel, 1, 7, libtcod.BKGND_NONE, libtcod.LEFT, 'Size: ' + str(selected_object.size) + ' ft')
-			libtcod.console_print_ex(object_panel, 1, 9, libtcod.BKGND_NONE, libtcod.LEFT, 'Weight: ' + str(selected_object.weight) + ' lbs')
-			libtcod.console_print_ex(object_panel, 1, 11, libtcod.BKGND_NONE, libtcod.LEFT, 'Material: ' + selected_object.material)
-			libtcod.console_print_ex(object_panel, 1, 12, libtcod.BKGND_NONE, libtcod.LEFT, 'On Fire: ' + str(selected_object.on_fire))
-			libtcod.console_print_ex(object_panel, 1, 13, libtcod.BKGND_NONE, libtcod.LEFT, 'stackable: ' + str(selected_object.stackable))
-			libtcod.console_print_ex(object_panel, 1, 14, libtcod.BKGND_NONE, libtcod.LEFT, 'internal_kinetic_energy: ' + str(selected_object.internal_kinetic_energy))
-			
-			if selected_object.inventory:
-				libtcod.console_print_ex(object_panel, 1, 15, libtcod.BKGND_NONE, libtcod.LEFT, 'inv: ' + selected_object.inventory[0].name)
-				
-			if selected_object.components:
-				libtcod.console_print_ex(object_panel, 1, 16, libtcod.BKGND_NONE, libtcod.LEFT, 'comp: ' + selected_object.components[0])
-				
-			if selected_object.equipped:
-				libtcod.console_print_ex(object_panel, 1, 17, libtcod.BKGND_NONE, libtcod.LEFT, 'equipped: ' + str(selected_object.equipped.name))
-				
-			libtcod.console_print_ex(object_panel, 1, 18, libtcod.BKGND_NONE, libtcod.LEFT, 'affixed: ' + str(selected_object.affixed_to_ground))
-
-			if selected_object.task_queue:
-				libtcod.console_print_ex(object_panel, 1, 20, libtcod.BKGND_NONE, libtcod.LEFT, 'task: ' + str(selected_object.task_queue[0].task_type))
-				if selected_object.task_queue[0].object_source_of_task:
-					libtcod.console_print_ex(object_panel, 1, 21, libtcod.BKGND_NONE, libtcod.LEFT, 'source: ' + str(selected_object.task_queue[0].object_source_of_task.name))
-				if selected_object.task_queue[0].object_moving_to:
-					libtcod.console_print_ex(object_panel, 1, 22, libtcod.BKGND_NONE, libtcod.LEFT, 'move to: ' + str(selected_object.task_queue[0].name_of_object_moving_to))
-				if selected_object.task_queue[0].object_to_interact_with:
-					libtcod.console_print_ex(object_panel, 1, 23, libtcod.BKGND_NONE, libtcod.LEFT, 'interact: ' + str(selected_object.task_queue[0].object_to_interact_with.name))
-											 
-			render_bar(1, 5, object_panel, OBJECT_INFO_BAR_WIDTH - 2, 'Cond', selected_object.condition, 100, libtcod.light_red, libtcod.darker_red)
-
-			description = textwrap.wrap(selected_object.description, (OBJECT_INFO_BAR_WIDTH - 2))
-			for i in range(0, len(description)):
-				libtcod.console_print_ex(object_panel, 1, 29 + i, libtcod.BKGND_NONE, libtcod.LEFT, description[i])
-
-	libtcod.console_blit(con, 0, 0, MAP_WIDTH, MAP_HEIGHT, 0, 0, 0)
-	libtcod.console_blit(panel, 0, 0, OBJECT_INFO_BAR_WIDTH, PANEL_HEIGHT, 0, 0, PANEL_Y)
-	libtcod.console_blit(object_panel, 0, 0, OBJECT_INFO_BAR_WIDTH, MAP_HEIGHT, 0, MAP_WIDTH, 0)
-	libtcod.console_blit(message_panel, 0, 0, MESSAGE_PANEL_WIDTH, PANEL_HEIGHT, 0, OBJECT_INFO_BAR_WIDTH,SCREEN_HEIGHT - PANEL_HEIGHT)
-		
-	libtcod.console_flush()
-	
-
-def menu(header, main_dialogue, options, clear_window_after_display=True):
-	global key, mouse
-
-	if not options:
-		options = ['Empty']
-
-	width = len(max(options, key = len)) + 8
-	if len(header) + 8 > width:
-		width = len(header) + 8
-
-	if len(options) > 26: raise ValueError('Cannot have a menu with more than 26 options.')
-	
-	highlight_option = 0
-	
-	main_text_lines = []
-	
-	if main_dialogue:
-	
-		if len(main_dialogue.dialogue) > SCREEN_WIDTH / 2:
-			width = int(SCREEN_WIDTH / 2) + 8
-			
-			lines = main_dialogue.dialogue.splitlines()
-			
-			for line in lines:
-				main_text_lines.append('')
-				line = line.strip()
-				this_section = textwrap.wrap(line, int(SCREEN_WIDTH / 2), replace_whitespace = False)
-				for section in this_section:
-					main_text_lines.append(section)
-		else:
-			if len(main_dialogue.dialogue) > (width - 8):
-				width = len(main_dialogue.dialogue) + 8
-			main_text_lines.append(main_dialogue.dialogue)
-	
-	if not main_text_lines:
-		main_text_height = 0
-	else:
-		main_text_height = len(main_text_lines) + 1
-	
-	# calculate total height for the header (after auto-wrap) and one line per option
-	if not header:
-		header_height = 0
-	else:
-		header_height = libtcod.console_get_height_rect(con, 0, 0, width, SCREEN_HEIGHT, header)
-			
-	height = len(options) + header_height + main_text_height + 2
-			
-	while True:
-
-		# create an off-screen console that represents the menu's window
-		window = libtcod.console_new(width, height)
-
-		# print the header, with auto-wrap
-		libtcod.console_set_default_foreground(window, libtcod.white)
-		libtcod.console_print_frame(window, 0, 0, width, height, libtcod.BKGND_SET, libtcod.CENTER, header)
-		
-		y = header_height
-		
-		if main_text_lines:
-			for single_line in main_text_lines:
-				libtcod.console_print_ex(window, 2, y + 1, libtcod.BKGND_NONE, libtcod.LEFT, single_line)
-				y += 1
-			
-			y += 1
-		
-		# print all the options
-		letter_index = ord('a')
-		for option_text in options:
-			if y == highlight_option:
-				libtcod.console_set_default_foreground(window, libtcod.light_green)
-
-			text = '(' + chr(letter_index) + ') ' + option_text
-			libtcod.console_print_ex(window, 2, y + 1, libtcod.BKGND_NONE, libtcod.LEFT, text)
-			y += 1
-			letter_index += 1
-			libtcod.console_set_default_foreground(window, libtcod.white)
-
-		# blit the contents of "window" to the root console
-		x = MAP_WIDTH / 2 - width / 2
-		y = MAP_HEIGHT / 2 - height / 2
-		libtcod.console_blit(window, 0, 0, width, height, 0, x, y, 1.0, 1.0)
-
-		# compute x and y offsets to convert console position to menu position
-		x_offset = x + 2  # x is the left edge of the menu
-		y_offset = y + header_height + main_text_height + 1  # subtract the height of the header from the top edge of the menu
-
-		# present the root console to the player and check for input
-		libtcod.console_flush()
-		libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS | libtcod.EVENT_MOUSE, key, mouse)
-
-		(menu_x, menu_y) = (mouse.cx - x_offset, mouse.cy - y_offset)
-
-		if menu_x >= 0 and menu_x < width - 4 and menu_y >= 0 and menu_y < height - 2:
-			highlight_option = menu_y + main_text_height + 1
-
-			if (mouse.lbutton_pressed):
-				# check if click is within the menu and on a choice
-				libtcod.console_delete(window)
-				if clear_window_after_display: render_all()
-				if menu_y < len(options):
-					menu_click_sound.play()
-					return menu_y
-		else:
-			highlight_option = None
-
-		if mouse.rbutton_pressed:
-			return None
-
-		libtcod.console_delete(window)
 
 
 def select_quantity_of_object(object, min, max):
@@ -3474,57 +3650,23 @@ def select_quantity_of_object(object, min, max):
 	for i in range(min, max + 1):
 		list_of_numbers.append(str(i))
 
-	chosen_number = menu("How many of " + object.name + "?", None, list_of_numbers)
+	chosen_number = menu_prompt(options = list_of_numbers, written_text = "How many of " + object.name + "?")
+	
 
 	if chosen_number >= 0:
-		return list_of_numbers[chosen_number]
+		return int(chosen_number)
 
 	return 0
 
 
-def conversation_handler():
-	None
-
-
 def handle_mouse():
-	global key, selected_object, message_scroll_button
+	global object_info_object
 	
 	(x, y) = (mouse.cx, mouse.cy)
 
-	if x == MESSAGE_PANEL_WIDTH + OBJECT_INFO_BAR_WIDTH - 2 and y == MAP_HEIGHT + 1:
-		message_scroll_button = 'Highlight Up'
-		if (mouse.lbutton_pressed):
-			message_scroll_button = 'Click Up'
-			return False
-	elif x == MESSAGE_PANEL_WIDTH + OBJECT_INFO_BAR_WIDTH - 2 and y == MAP_HEIGHT + PANEL_HEIGHT - 2:
-		message_scroll_button = 'Highlight Down'
-		if (mouse.lbutton_pressed):
-			message_scroll_button = 'Click Down'
-			return False
-	else:
-		message_scroll_button = None
-
 	if (mouse.lbutton_pressed):
-		if MORE_ERROR_LOGGING:
-			print '---'
-			print 'illu ' + str(map[x][y].illuminated)
-			print 'up ' + str(map[x][y].illuminated_up)
-			print 'down ' + str(map[x][y].illuminated_down)
-			print 'right ' + str(map[x][y].illuminated_right)
-			print 'left ' + str(map[x][y].illuminated_left)
-			print '---'
-
-		if y > MAP_HEIGHT and y < SCREEN_HEIGHT and x > OBJECT_INFO_BAR_WIDTH and x < SCREEN_WIDTH:
-			# game_msgs
-			for message in game_msgs:
-				if message.y == y and x <= OBJECT_INFO_BAR_WIDTH + len(message.text):
-
-					if message.relevant_objects:
-						selected_object = prompt_to_choose_object(message.relevant_objects)
-
-						# If you don't click on an object, the menu closes
-						if not selected_object:
-							return False
+	
+		main_game_ui.check_all_click_points()
 
 		if x < MAP_WIDTH and y < MAP_HEIGHT:
 
@@ -3535,45 +3677,56 @@ def handle_mouse():
 					objects_at_location.append(obj)
 
 			if objects_at_location:
-				selected_object = prompt_to_choose_object(objects_at_location)
+				if len(objects_at_location) == 1:
+					selected_object = objects_at_location[0]
+				else:
+					selected_object = menu_prompt(options = objects_at_location)
 
 				# If you don't click on an object, the menu closes
 				if not selected_object:
 					return False
+					
+				object_info_object = selected_object
+					
+				render_all()
 
 				# If you do click an object, another context menu appears to decide what to do with it
-				action_options = ['Attack', 'Pick Up', 'Grab', 'Release', 'Open / Close', 'Lock / Unlock', 'Give Object', 'Take Object', 'Throw', 'Equip', 'Speak', 'Examine', 'Activate / Deactivate']
-				chosen_action = menu(selected_object.name, None, action_options)
-
+				action_options = ['Attack', 'Pick Up', 'Grab / Release', 'Open / Close', 'Lock / Unlock', 'Give Object', 'Take Object', 'Throw', 'Equip', 'Speak', 'Examine', 'Activate / Deactivate']
+				chosen_action = menu_prompt(options = action_options, written_text = "Take what action?", header = selected_object.name)
 				if player.distance_to(selected_object) > DISTANCE_TO_INTERACT:
 					Message(selected_object.name + ' is too far away.', 'Action', relevant_objects=[selected_object])
 					return False
 
 				object_to_give = None
-				if chosen_action >= 0:
-					return process_action(action_options[chosen_action], object_taking_action=player, object_being_actioned=object_to_give, object_being_targeted=selected_object)
+				if chosen_action:
+					return process_action(chosen_action, object_taking_action=player, object_being_actioned=object_to_give, object_being_targeted=selected_object)
 					
-
 
 	elif (mouse.rbutton_pressed):
 		if x < MAP_WIDTH and y < MAP_HEIGHT:
 			# if you click the right mouse button while holding something you will throw it
 			if player.unit.holding:
 				return player.throw(player.unit.holding, map[x][y])
-			elif player.equipped:
-				return player.unit.attack(target_object_or_tile = map[x][y])
+
+			return player.unit.attack(target_object_or_tile = map[x][y])
 
 	return False
 
 
 def handle_keyboard():
-	global key, selected_object, player
+	global key, player
 
 	# test for other keys
 	key_char = chr(key.c)
 	
 	if key_char == 't':
 		return True
+		
+	if key_char == 'x' or key_char == 'X':
+		if player.movement_locked:
+			player.movement_locked = False
+		else:
+			player.movement_locked = True
 
 	if key_char == 'w' or key_char == 'W':
 		move_success = player.move(0, -1)
@@ -3601,6 +3754,9 @@ def handle_keyboard():
 		
 		if player in adjacent_objects: adjacent_objects.remove(player)
 		
+		if player.equipped and (key_char == 'v' or key_char == 'V'):
+			adjacent_objects.append(player.equipped)
+		
 		objects_to_remove = []
 		
 		
@@ -3610,7 +3766,7 @@ def handle_keyboard():
 				if not player.can_i_perform_task(object, 'Drag'):
 					objects_to_remove.append(object)
 			elif key_char == 'f' or key_char == 'F':
-				if not player.can_i_perform_task(object, 'Lift') and not object.allow_inventory:
+				if not player.can_i_perform_task(object, 'Lift') or not object.allow_inventory:
 					objects_to_remove.append(object)
 				elif object.unit:
 					objects_to_remove.append(object)
@@ -3632,7 +3788,7 @@ def handle_keyboard():
 
 		if adjacent_objects:
 			if len(adjacent_objects) > 1:
-				selected_object = prompt_to_choose_object(adjacent_objects)
+				selected_object = menu_prompt(options = adjacent_objects, written_text = "Choose which object?")
 			else:
 				selected_object = adjacent_objects[0]
 			
@@ -3641,7 +3797,7 @@ def handle_keyboard():
 				if key_char == 'f' or key_char == 'F':
 					if selected_object.allow_inventory and len(selected_object.inventory) > 0:
 						if selected_object.check_if_unlocked():
-							selected_object = prompt_to_choose_object(selected_object.inventory)
+							selected_object = menu_prompt(options = selected_object.inventory, written_text = "Take what object?", header = selected_object.name + "'s inventory")
 					quantity = prompt_for_quantity(selected_object)
 					return player.unit.pick_up(selected_object, quantity)
 					
@@ -3660,12 +3816,12 @@ def handle_keyboard():
 
 	elif key_char == 'q' or key_char == 'Q':
 		if player.inventory:
-			chosen_inventory_object = prompt_to_choose_object(player.inventory)
+			chosen_inventory_object = menu_prompt(options = player.inventory, header = "Player's inventory")
 			if chosen_inventory_object:
 				action_options = ['Drop', 'Consume', 'Equip', 'Throw']
-				chosen_action = menu(chosen_inventory_object.name, None, action_options)
-				if chosen_action >= 0:
-					return process_action(action_options[chosen_action], object_taking_action=player, object_being_actioned=None, object_being_targeted=chosen_inventory_object)
+				chosen_action = menu_prompt(options = action_options, written_text = "Take what action?", header = chosen_inventory_object.name)
+				if chosen_action:
+					return process_action(chosen_action, object_taking_action=player, object_being_actioned=None, object_being_targeted=chosen_inventory_object)
 
 	return False
 
@@ -3682,77 +3838,6 @@ def prompt_for_quantity(object_to_prompt):
 		return 1
 
 
-def prompt_to_choose_dialogue(dialogue_object, pick_a_random_response = False, speaker_object = None):
-	if not dialogue_object.responses:
-		if MORE_ERROR_LOGGING:
-			print 'dialogue has no response options'
-			print ''
-		return None
-
-	response_ID = None
-
-	response_IDs = []
-	response_dialogue = []
-
-	for response_option_ID in dialogue_object.responses:
-		response_option_object = get_dialogue_by_ID(response_option_ID)
-		response_IDs.append(response_option_object.ID)
-		response_dialogue.append(response_option_object.dialogue)
-
-	if pick_a_random_response:
-		chosen_response_index = libtcod.random_get_int(0, 0, (len(response_dialogue) - 1))
-	else:
-		if speaker_object:
-			speaker_name = speaker_object.name
-		else:
-			speaker_name = 'Dialogue'
-		chosen_response_index = menu(speaker_name, dialogue_object, response_dialogue)
-
-	if chosen_response_index >= 0 and chosen_response_index < len(response_IDs):
-		response_ID = response_IDs[chosen_response_index]
-
-	return response_ID
-
-
-def prompt_to_choose_object(list_of_objects, header=None):
-	selected_object = None
-	list_of_objects_names = []
-
-	if not header:
-		header = 'Which object would you like to select?'
-
-	if not list_of_objects:
-		return None
-
-	for this_object in list_of_objects:
-		
-		optional_ID_tag = ''
-		
-		if ID_TAGS_ON:
-			optional_ID_tag = '[' + str(this_object.ID) + '] '
-
-		quantity = ''
-		if this_object.quantity > 1:
-			quantity = ' (x' + str(this_object.quantity) + ')'
-
-		direction = ''
-		
-		if this_object.x:
-			x_offset = this_object.x - player.x
-			y_offset = this_object.y - player.y
-			direction = '  (x:' + str(x_offset) + ', y:' + str(y_offset) + ')'
-
-		list_of_objects_names.append(optional_ID_tag + this_object.name + quantity + direction)
-
-	chosen_object_index = menu(header, None, list_of_objects_names)
-	
-	#if chosen_object_index:
-	if chosen_object_index >= 0:
-		selected_object = list_of_objects[chosen_object_index]
-
-	return selected_object
-
-
 def target_tile(return_object_if_possible = False, max_range = None):
 	global key, mouse, map
 	# return the position of a tile left-clicked in player's FOV (optionally in a range), or (None,None) if right-clicked.
@@ -3765,7 +3850,7 @@ def target_tile(return_object_if_possible = False, max_range = None):
 		(x, y) = (mouse.cx, mouse.cy)
 
 		if mouse.rbutton_pressed or key.vk == libtcod.KEY_ESCAPE:
-			return (None, None)  # cancel if the player right-clicked or pressed Escape
+			return None  # cancel if the player right-clicked or pressed Escape
 
 		if x < MAP_WIDTH and y < MAP_HEIGHT:
 
@@ -3780,12 +3865,16 @@ def target_tile(return_object_if_possible = False, max_range = None):
 				return map[x][y]
 				
 def toggle_main_power(force_state = None):
-	global light_sources, main_power_on, affixed_objects, non_affixed_objects
+	global light_sources, main_power_on, affixed_objects, non_affixed_objects, player
 	
 	if main_power_on == True:
 		main_power_on = False
+		main_power_off_sound.play()
+		player.light_radius = 3
 	else:
 		main_power_on = True
+		main_power_on_sound.play()
+		player.light_radius = 7
 		
 	all_objects = affixed_objects + non_affixed_objects
 	
@@ -3809,18 +3898,17 @@ def reset_everything():
 	global game_msgs
 	global game_state
 	global rooms
-	global selected_object
+	global object_info_object
 	global tiles_on_fire
 	global objects_on_fire
 	global objects_in_motion
-	global message_scroll_button
-	global message_scroll_state
 	global temporary_obstacles
 	global lab_rooms
 	global lab_rooms_original
 	global light_sources
 	global light_source_fov_maps
 	global main_power_on
+	global current_music
 	
 	map = []
 	affixed_objects = []
@@ -3830,17 +3918,16 @@ def reset_everything():
 	game_msgs = []
 	game_state = 'playing'
 	rooms = []
-	selected_object = None
+	object_info_object = None
 	tiles_on_fire = []
 	objects_on_fire = []
 	objects_in_motion = []
-	message_scroll_button = None
-	message_scroll_state = 0
 	temporary_obstacles = []
 	lab_rooms = list(lab_rooms_original)
 	light_sources = []
 	light_source_fov_maps = []
 	main_power_on = True
+	current_music = None
 
 
 def new_game():
@@ -3852,22 +3939,27 @@ def new_game():
 	global game_msgs
 	global game_state
 	global rooms
-	global selected_object
 	global tiles_on_fire
 	global objects_on_fire
 	global objects_in_motion
-	global message_scroll_button
-	global message_scroll_state
 	global temporary_obstacles
 	global light_sources
 	global main_power_on
+	global scoreboard
+	global main_game_ui
 	
 	reset_everything()
-
+	
 	# create object representing the player
 	
 	player = get_object_by_name('Player')
-
+	
+	player.description = "This 36 hour course has been designed for medical office professionals to assist in developing an understanding of common medical tests related to body systems. Knowledge in the area of medical testing will help the student to educate the patient in relation to the description and purpose of the test, preparation of the patient before the test, and care during and after the test, and expected results. Risks, complications, and special concerns are covered.  This course is open to people currently employed in health related areas or hope to be employed in the future.  This 36 hour course has been designed for medical office professionals to assist in developing an understanding of common medical tests related to body systems. Knowledge in the area of medical testing will help the student to educate the patient in relation to the description and purpose of the test, preparation of the patient before the test, and care during and after the test, and expected results. Risks, complications, and special concerns are covered.  This course is open to people currently employed in health related areas or hope to be employed in the future."
+	
+	player.name = menu_prompt(written_text = ['Choose a name for your character:'], header = 'Name', prompt_for_choice = 'Text Entry', render_screen_before_displaying = False, main_screen_console = True)
+	
+	scoreboard.reset_session(name = player.name)
+	
 	# generate map (at this point it's not drawn to the screen)
 	make_map()
 
@@ -3955,7 +4047,10 @@ def new_game():
 
 	# create the list of game messages and their foreground_colours, starts empty
 	game_msgs = []
-
+	
+	# Initialize console windows
+	main_game_ui.force_initialize_all_panels()
+	
 	# a warm welcoming message!
 	Message('Welcome new scientist.  Do your research.  Im sure nobody will become THE THING.', 'Narrator')
 
@@ -3969,12 +4064,12 @@ def initialize_fov():
 		for x in range(MAP_WIDTH):
 			libtcod.map_set_properties(fov_map, x, y, not map[x][y].check_blocks_sight(), not map[x][y].wall)
 			
-	libtcod.console_clear(con)  # unexplored areas start black (which is the default background foreground_colour)
+	libtcod.console_clear(main_game_ui.con)  # unexplored areas start black (which is the default background foreground_colour)
 
 
 def play_game():
-	global key, mouse, game_paused, clicked_object_name, fov_recompute, list_of_things, game_state, all_dialogue_IDs, player, objects_on_fire, objects_in_motion
-
+	global key, mouse, game_paused, clicked_object_name, fov_recompute, list_of_things, game_state, all_dialogue_IDs, player, objects_on_fire, objects_in_motion, object_info_object, fov_map
+	
 	all_dialogue_IDs = []
 	for i in range(0, 300):
 		if get_dialogue_by_ID(i):
@@ -4008,22 +4103,15 @@ def play_game():
 	for i in range(1, 15):
 		blah = get_object_by_name('Lamp')
 		random_place_object(blah)
-	"""	
-	for i in range(1, 15):
-		blah = get_object_by_name('Filing Cabinet')
-		blah.quantity = 1
-		random_place_object(blah)
 		
-	for i in range(1, 15):
-		blah = get_object_by_name('Simple Key')
-		blah.quantity = 1
+	for i in range(1, 25):
+		blah = get_object_by_name('Liquor Bomb')
 		random_place_object(blah)
-
-	"""
-
+	
 
 	# main loop
 	while not libtcod.console_is_window_closed() and game_state == 'playing':
+		
 		key = libtcod.Key()
 	
 		fov_recompute = True
@@ -4036,15 +4124,16 @@ def play_game():
 
 		libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS | libtcod.EVENT_MOUSE, key, mouse)
 
-		handle_mouse()
+		if handle_mouse():
+			player.unit.flag_turn_taken()
 
 		libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS | libtcod.EVENT_MOUSE, key, mouse)
 
 		if libtcod.console_is_key_pressed(libtcod.KEY_ESCAPE):
-			end_game_return_to_main_menu()
-			return False
-		elif libtcod.console_is_key_pressed(libtcod.KEY_ENTER):
-			libtcod.console_set_fullscreen(not libtcod.console_is_fullscreen())
+			quit_choice = menu_prompt(options = ['Yes', 'No'], written_text = 'Really quit game?', header = 'Quit')
+			if quit_choice == 'Yes':
+				end_game_return_to_main_menu()
+				return False
 			
 		
 		if ACTIVATE_FUNCTION_TIMERS: moving_projectiles_time_variable = start_test()
@@ -4053,14 +4142,22 @@ def play_game():
 
 		# EVENTUALLY THE PROJECTILE RENDER SHOULD BE BASED ON THROW POWER
 		while len(objects_in_motion) > 0:
-			if libtcod.sys_elapsed_seconds() >  last_projectile_tick + 0.001:
-		
+			if libtcod.sys_elapsed_seconds() >  last_projectile_tick + 0.0001:
+				moving_things_to_remove = []
 				for moving_thing in objects_in_motion:
 					if ACTIVATE_FUNCTION_TIMERS: time_variable = start_test()
-					moving_thing.run_turn()
+					if moving_thing.run_turn():
+						moving_things_to_remove.append(moving_thing)
 					if ACTIVATE_FUNCTION_TIMERS: end_test(time_variable, moving_thing.projectile_object.name + ' processing projectile movement')
-					
-				libtcod.console_blit(con, 0, 0, MAP_WIDTH, MAP_HEIGHT, 0, 0, 0)
+				
+				tiles_to_stack = []
+				for moving_thing_to_remove in moving_things_to_remove:
+					tiles_to_stack.append(map[moving_thing_to_remove.projectile_object.x][moving_thing_to_remove.projectile_object.y])
+					objects_in_motion.remove(moving_thing_to_remove)
+					moving_thing_to_remove.projectile_object.direction = pick_random(['Up', 'Down', 'Left', 'Right'])
+					moving_thing_to_remove = None
+				
+				libtcod.console_blit(main_game_ui.con, 0, 0, MAP_WIDTH, MAP_HEIGHT, 0, 0, 0)
 				libtcod.console_flush()
 					
 				last_projectile_tick = libtcod.sys_elapsed_seconds()
@@ -4068,112 +4165,114 @@ def play_game():
 			
 		if ACTIVATE_FUNCTION_TIMERS: end_test(moving_projectiles_time_variable, '(loop) all moving projectiles combined')
 		
-		if key.pressed and game_state == 'playing' and libtcod.sys_elapsed_seconds() > last_tick + NUMBER_OF_SECONDS_BETWEEN_TURNS:
+		if not player.unit.turn_taken:
+			if handle_keyboard():
+				player.unit.flag_turn_taken()
+		
+		if player.unit.turn_taken == True and libtcod.sys_elapsed_seconds() > last_tick + NUMBER_OF_SECONDS_BETWEEN_TURNS:
 			
 			last_tick = libtcod.sys_elapsed_seconds()
 
-			if not player.destroyed:
-
-				if handle_keyboard():
-					player.unit.turn_taken = True
-
-				if player.unit.turn_taken:
-					if ACTIVATE_FUNCTION_TIMERS: all_units_turn_time = start_test()
-					temp_units = [this_unit for this_unit in units]
-					for some_guy in temp_units:
-						if not some_guy.held_by:
-							if not some_guy.unit.turn_taken:
-								if ACTIVATE_FUNCTION_TIMERS: time_variable = start_test()
-								some_guy.unit.take_turn()
-								if ACTIVATE_FUNCTION_TIMERS: end_test(time_variable, some_guy.name + ' taking their turn')
-								
-								# bonus turn for the thing when it's panicking
-								if some_guy.unit.the_thing_revealed:
-									some_guy.unit.take_turn()
-								
-								
-						some_guy.unit.turn_taken = False
-							
-					if ACTIVATE_FUNCTION_TIMERS: end_test(all_units_turn_time, '(loop) all units taking thier turns')
-					num_turns += 1
+			if ACTIVATE_FUNCTION_TIMERS: all_units_turn_time = start_test()
+			temp_units = [this_unit for this_unit in units]
+			for some_guy in temp_units:
+				if not some_guy.held_by:
+					if not some_guy.unit.turn_taken:
+						if ACTIVATE_FUNCTION_TIMERS: time_variable = start_test()
+						some_guy.unit.take_turn()
+						if ACTIVATE_FUNCTION_TIMERS: end_test(time_variable, some_guy.name + ' taking their turn')
+						
+						# bonus turn for the thing when it's panicking
+						if some_guy.unit.the_thing_revealed:
+							some_guy.unit.take_turn()
+						
+						
+				some_guy.unit.turn_taken = False
 					
+			if ACTIVATE_FUNCTION_TIMERS: end_test(all_units_turn_time, '(loop) all units taking thier turns')
+			num_turns += 1
+			
+			# Burning objects handling
+			for burning_thing in objects_on_fire:
+				if map[burning_thing.x][burning_thing.y].burn_value >= 0:
+					if not map[burning_thing.x][burning_thing.y].on_fire:
+						map[burning_thing.x][burning_thing.y].on_fire = True
+						map[burning_thing.x][burning_thing.y].char = 'F'
+						map[burning_thing.x][burning_thing.y].foreground_colour = libtcod.light_red
+						tiles_on_fire.append(map[burning_thing.x][burning_thing.y])
 
-					# Burning objects handling
-					for burning_thing in objects_on_fire:
-						if map[burning_thing.x][burning_thing.y].burn_value >= 0:
-							if not map[burning_thing.x][burning_thing.y].on_fire:
-								map[burning_thing.x][burning_thing.y].on_fire = True
-								map[burning_thing.x][burning_thing.y].char = 'F'
-								map[burning_thing.x][burning_thing.y].foreground_colour = libtcod.light_red
-								tiles_on_fire.append(map[burning_thing.x][burning_thing.y])
+				# Be on fire
+				burning_thing.condition -= 5
+				if not burning_thing.unit:
+					burning_thing.char = 'F'
+				burning_thing.foreground_colour = pick_random([libtcod.dark_red, libtcod.yellow, libtcod.orange])
 
-						# Be on fire
-						burning_thing.condition -= 5
-						if not burning_thing.unit:
-							burning_thing.char = 'F'
-						burning_thing.foreground_colour = pick_random([libtcod.dark_red, libtcod.yellow, libtcod.orange])
-
-						# Burn to death
-						if burning_thing.condition <= 0:
-							burning_thing.on_fire = False
-							objects_on_fire.remove(burning_thing)
-							burning_thing.destroy()
-							
-					if ACTIVATE_FUNCTION_TIMERS: time_variable = start_test()
+				# Burn to death
+				if burning_thing.condition <= 0:
+					burning_thing.on_fire = False
+					objects_on_fire.remove(burning_thing)
+					burning_thing.destroy(cause_of_destroy = 'Fire')
 					
-					# Burning tiles handling
-					for burning_tile in tiles_on_fire:
-						for burn_this_object in burning_tile.objects_on_this_tile:
-							if not burn_this_object.on_fire:
-								burn_this_object.on_fire = True
-								objects_on_fire.append(burn_this_object)
+			if ACTIVATE_FUNCTION_TIMERS: time_variable = start_test()
+			
+			# Burning tiles handling
+			for burning_tile in tiles_on_fire:
+				for burn_this_object in burning_tile.objects_on_this_tile:
+					if not burn_this_object.on_fire:
+						burn_this_object.on_fire = True
+						objects_on_fire.append(burn_this_object)
 
-						burning_tile.burn_value -= 1
+				burning_tile.burn_value -= 1
 
-						if burning_tile.burn_value <= 3:
-							try:
-								right = map[normalize_to_map_width(burning_tile.x + 1)][normalize_to_map_height(burning_tile.y)]
-								left = map[normalize_to_map_width(burning_tile.x - 1)][normalize_to_map_height(burning_tile.y)]
-								up = map[normalize_to_map_width(burning_tile.x)][normalize_to_map_height(burning_tile.y - 1)]
-								down = map[normalize_to_map_width(burning_tile.x)][normalize_to_map_height(burning_tile.y + 1)]
-								upright = map[normalize_to_map_width(burning_tile.x + 1)][normalize_to_map_height(burning_tile.y - 1)]
-								upleft = map[normalize_to_map_width(burning_tile.x - 1)][normalize_to_map_height(burning_tile.y - 1)]
-								downright = map[normalize_to_map_width(burning_tile.x + 1)][normalize_to_map_height(burning_tile.y + 1)]
-								downleft = map[normalize_to_map_width(burning_tile.x - 1)][normalize_to_map_height(burning_tile.y + 1)]
+				if burning_tile.burn_value <= 3:
+					try:
+						right = map[normalize_to_map_width(burning_tile.x + 1)][normalize_to_map_height(burning_tile.y)]
+						left = map[normalize_to_map_width(burning_tile.x - 1)][normalize_to_map_height(burning_tile.y)]
+						up = map[normalize_to_map_width(burning_tile.x)][normalize_to_map_height(burning_tile.y - 1)]
+						down = map[normalize_to_map_width(burning_tile.x)][normalize_to_map_height(burning_tile.y + 1)]
+						upright = map[normalize_to_map_width(burning_tile.x + 1)][normalize_to_map_height(burning_tile.y - 1)]
+						upleft = map[normalize_to_map_width(burning_tile.x - 1)][normalize_to_map_height(burning_tile.y - 1)]
+						downright = map[normalize_to_map_width(burning_tile.x + 1)][normalize_to_map_height(burning_tile.y + 1)]
+						downleft = map[normalize_to_map_width(burning_tile.x - 1)][normalize_to_map_height(burning_tile.y + 1)]
 
-								right.set_on_fire()
-								left.set_on_fire()
-								up.set_on_fire()
-								down.set_on_fire()
-								upright.set_on_fire()
-								upleft.set_on_fire()
-								downright.set_on_fire()
-								downleft.set_on_fire()
+						right.set_on_fire()
+						left.set_on_fire()
+						up.set_on_fire()
+						down.set_on_fire()
+						upright.set_on_fire()
+						upleft.set_on_fire()
+						downright.set_on_fire()
+						downleft.set_on_fire()
 
-							except IndexError:
-								None
+					except IndexError:
+						None
 
-						if burning_tile.burn_value <= 0:
-							tiles_on_fire.remove(burning_tile)
-							burning_tile.foreground_colour = libtcod.grey
-							burning_tile.char = '.'
-							
-					if ACTIVATE_FUNCTION_TIMERS: end_test(time_variable, 'handling burning stuff')
-				
-				if not DISABLE_THE_THING:
-					if not chosen_thing and num_turns > NUMBER_OF_TURNS_UNTIL_THE_THING:
-						thing_candidates = []
-						for obj in units:
-							if not obj == player:
-								thing_candidates.append(obj)
-						chosen_thing = thing_candidates[libtcod.random_get_int(0, 0, (len(thing_candidates) - 1))]
-						chosen_thing.unit.become_the_thing()
+				if burning_tile.burn_value <= 0:
+					tiles_on_fire.remove(burning_tile)
+					burning_tile.foreground_colour = libtcod.grey
+					burning_tile.char = '.'
+					
+			if ACTIVATE_FUNCTION_TIMERS: end_test(time_variable, 'handling burning stuff')
+		
+		if not DISABLE_THE_THING:
+			if not chosen_thing and num_turns > NUMBER_OF_TURNS_UNTIL_THE_THING:
+				thing_candidates = []
+				for obj in units:
+					if not obj == player:
+						thing_candidates.append(obj)
+				chosen_thing = thing_candidates[libtcod.random_get_int(0, 0, (len(thing_candidates) - 1))]
+				chosen_thing.unit.become_the_thing()
 		
 		if ACTIVATE_FUNCTION_TIMERS: end_test(main_loop_time, '(loop) main loop')
 		
 
 def initialize_sounds():
 	global impact_sound
+	global impact_no_damage_sound
+	global impact_flesh_sound
+	global impact_wood_sound
+	global impact_plastic_sound
+	
 	global gun_sound
 	global explosion_sound
 	global death_sound
@@ -4182,93 +4281,69 @@ def initialize_sounds():
 	global door_sound
 	global menu_click_sound
 	global key_unlock_sound
-	global activate_sound
+	global activate_on_sound
+	global activate_off_sound
+	global current_music
+	global glass_break_sound
+	global main_power_off_sound
+	global main_power_on_sound
+	global no_power_sound
+	global lock_unlock_sound
 	
+	global flesh_destroy_sound
+	global stone_destroy_sound
+	global wood_destroy_sound
+	
+	current_music = None
+	
+	no_power_sound = pygame.mixer.Sound('thing_sounds/no_power.wav')
+	main_power_off_sound = pygame.mixer.Sound('thing_sounds/main_power_off.wav')
+	main_power_on_sound = pygame.mixer.Sound('thing_sounds/main_power_on.wav')
+	glass_break_sound = pygame.mixer.Sound('thing_sounds/glass_break.wav')
 	impact_sound = pygame.mixer.Sound('thing_sounds/impact.wav')
+	impact_no_damage_sound = pygame.mixer.Sound('thing_sounds/impact_no_damage.wav')
 	gun_sound = pygame.mixer.Sound('thing_sounds/gun.wav')
-	explosion_sound = pygame.mixer.Sound('thing_sounds/explosion.wav')
+	explosion_sound = pygame.mixer.Sound('thing_sounds/explosion_2.wav')
 	death_sound = pygame.mixer.Sound('thing_sounds/death.wav')
 	no_ammo_sound = pygame.mixer.Sound('thing_sounds/no_ammo.wav')
 	move_sound = pygame.mixer.Sound('thing_sounds/move.wav')
 	door_sound = pygame.mixer.Sound('thing_sounds/door.wav')
 	menu_click_sound = pygame.mixer.Sound('thing_sounds/menu_click.wav')
 	key_unlock_sound = pygame.mixer.Sound('thing_sounds/key_unlock.wav')
-	activate_sound = pygame.mixer.Sound('thing_sounds/activate.wav')
+	activate_on_sound = pygame.mixer.Sound('thing_sounds/activate_on.ogg')
+	activate_off_sound = pygame.mixer.Sound('thing_sounds/activate_off.ogg')
+	lock_unlock_sound = pygame.mixer.Sound('thing_sounds/lock_unlock.ogg')
+
+	flesh_destroy_sound = pygame.mixer.Sound('thing_sounds/flesh.ogg')
+	stone_destroy_sound = pygame.mixer.Sound('thing_sounds/destroy_stone.ogg')
+	wood_destroy_sound = pygame.mixer.Sound('thing_sounds/destroy_wood.wav')
+	
+	impact_flesh_sound = pygame.mixer.Sound('thing_sounds/impact_flesh.ogg')
+	impact_wood_sound = pygame.mixer.Sound('thing_sounds/impact_wood.ogg')
+	impact_plastic_sound = pygame.mixer.Sound('thing_sounds/impact_plastic.ogg')
+
 	
 def end_game_return_to_main_menu():
 	global game_state
 	game_state = None
-	reset_everything()
 	render_all()
 	play_music(None)
+	save_scoreboard()
 	return True
 	
 	
 def play_music(music_file):
+	global current_music
 	if not music_file:
 		pygame.mixer.music.stop()
+	elif music_file == 'Pause':
+		pygame.mixer.music.set_volume(0)
+	elif music_file == current_music:
+		pygame.mixer.music.set_volume(1)
 	else:
 		pygame.mixer.music.load('thing_sounds/' + music_file)
 		pygame.mixer.music.play(-1)
-
-def main_menu():
-	global SHOW_ALL, HEAR_ALL, PLAY_MUSIC, DISABLE_THE_THING, fov_recompute
-	fov_recompute = False
-	img = libtcod.image_load('menu_background.png')
-
-	pygame.mixer.pre_init(frequency = 44100, size = -16, channels = 2, buffer = 1024)
-	pygame.mixer.init()
-	
-	initialize_sounds()
-	
-	easter_egg = 0
-
-	while not libtcod.console_is_window_closed():
-	
-		# show the background image, at twice the regular console resolution
-		libtcod.image_blit_2x(img, 0, 0, 0)
-
-		# show the game's title, and some credits!
-		libtcod.console_set_default_foreground(0, libtcod.light_yellow)
-		libtcod.console_print_ex(0, SCREEN_WIDTH / 2 + 2, SCREEN_HEIGHT / 2 - 4 + 2, libtcod.BKGND_NONE, libtcod.CENTER, 'TENTACLE JAZZHANDS')
-	
-		# show options and wait for the player's choice
-		choice = menu('THE THING', get_dialogue_by_ID(307), ['Play a new game', 'Show Full Map [' + str(SHOW_ALL) + ']', 'Show All Messages [' + str(HEAR_ALL) + ']', 'Play Music [' + str(PLAY_MUSIC) + ']', 'Disable The Thing [' + str(DISABLE_THE_THING) + ']', 'Quit'], clear_window_after_display=False)
-	
-		if choice == 0:  # new game
-			if PLAY_MUSIC:
-				if easter_egg < 4:
-					play_music('music.ogg')
-				else:
-					play_music('music_2.ogg')
-			new_game()
-			play_game()
-		elif choice == 1:
-			if SHOW_ALL:
-				SHOW_ALL = False
-			else:
-				SHOW_ALL = True
-		elif choice == 2:  
-			if HEAR_ALL:
-				HEAR_ALL = False
-			else:
-				HEAR_ALL = True
-		elif choice == 3: 
-			if PLAY_MUSIC:
-				PLAY_MUSIC = False
-			else:
-				PLAY_MUSIC = True
-			easter_egg += 1
-		elif choice == 4: 
-			if DISABLE_THE_THING:
-				DISABLE_THE_THING = False
-			else:
-				DISABLE_THE_THING = True
-		elif choice == 5:  # quit
-			sys.exit()
-				
-
-				
+		current_music = music_file
 
 def get_room_type_by_name(room_type_name):
 	# Create a name for the room
@@ -4440,6 +4515,67 @@ def get_object_by_name(object_name):
 		this_object = get_predesigned_object_by_name('Door')
 		this_object.blocks_sightline = False
 		this_object.foreground_colour = libtcod.light_grey
+		this_object.material = 'Metal'
+		
+	# Materials
+		
+	elif object_name == 'Wood':
+		this_object = get_predesigned_object_by_name('Generic Object')
+		this_object.char = '='
+		this_object.size = DEFAULT_SIZE_OF_MATERIAL_COMPONENTS
+		this_object.material = 'Wood'
+		this_object.foreground_colour = libtcod.light_orange
+		this_object.stackable = True
+		
+	elif object_name == 'Stone':
+		this_object = get_predesigned_object_by_name('Generic Object')
+		this_object.char = '~'
+		this_object.size = DEFAULT_SIZE_OF_MATERIAL_COMPONENTS
+		this_object.material = 'Stone'
+		this_object.foreground_colour = libtcod.lighter_grey
+		this_object.stackable = True
+		
+	elif object_name == 'Metal':
+		this_object = get_predesigned_object_by_name('Generic Object')
+		this_object.char = '*'
+		this_object.size = DEFAULT_SIZE_OF_MATERIAL_COMPONENTS
+		this_object.material = 'Metal'
+		this_object.foreground_colour = libtcod.dark_grey
+		this_object.stackable = True
+		
+	elif object_name == 'Plastic':
+		this_object = get_predesigned_object_by_name('Generic Object')
+		this_object.char = '('
+		this_object.size = DEFAULT_SIZE_OF_MATERIAL_COMPONENTS
+		this_object.material = 'Plastic'
+		this_object.foreground_colour = libtcod.dark_cyan
+		this_object.stackable = True
+		
+	elif object_name == 'Cloth':
+		this_object = get_predesigned_object_by_name('Generic Object')
+		this_object.char = '~'
+		this_object.size = DEFAULT_SIZE_OF_MATERIAL_COMPONENTS
+		this_object.material = 'Cloth'
+		this_object.foreground_colour = libtcod.white
+		this_object.stackable = True
+		
+	elif object_name == 'Flesh':
+		this_object = get_predesigned_object_by_name('Generic Object')
+		this_object.char = '%'
+		this_object.size = DEFAULT_SIZE_OF_MATERIAL_COMPONENTS
+		this_object.material = 'Flesh'
+		this_object.foreground_colour = libtcod.dark_red
+		this_object.stackable = True
+		
+	elif object_name == 'Glass':
+		this_object = get_predesigned_object_by_name('Generic Object')
+		this_object.char = '>'
+		this_object.size = DEFAULT_SIZE_OF_MATERIAL_COMPONENTS
+		this_object.material = 'Glass'
+		this_object.foreground_colour = libtcod.light_cyan
+		this_object.stackable = True
+		
+	# End materials
 
 	elif object_name == 'Table':
 		this_object = get_predesigned_object_by_name('Generic Object')
@@ -4447,7 +4583,6 @@ def get_object_by_name(object_name):
 		this_object.size = 5
 		this_object.material = 'Wood'
 		this_object.foreground_colour = libtcod.light_orange
-		this_object.description = "A basic table."
 
 	elif object_name == 'Fence':
 		this_object = get_predesigned_object_by_name('Generic Object')
@@ -4456,7 +4591,6 @@ def get_object_by_name(object_name):
 		this_object.material = 'Metal'
 		this_object.affixed_to_ground = True
 		this_object.foreground_colour = libtcod.grey
-		this_object.description = "A basic " + object_name
 
 	elif object_name == 'Oil Barrel':
 		this_object = get_predesigned_object_by_name('Generic Object')
@@ -4465,8 +4599,7 @@ def get_object_by_name(object_name):
 		this_object.material = 'Metal'
 		this_object.components = ['Fire', 'Fire', 'Fire', 'Fire', 'Fire', 'Fire', 'Fire', 'Fire', 'Fire', 'Fire', 'Fire', 'Fire', 'Fire']
 		this_object.foreground_colour = libtcod.grey
-		this_object.description = "A basic " + object_name
-		this_object.internal_kinetic_energy = 10000
+		this_object.internal_kinetic_energy = 100000
 		
 	elif object_name == 'Mega Bomb':
 		this_object = get_predesigned_object_by_name('Generic Object')
@@ -4476,8 +4609,18 @@ def get_object_by_name(object_name):
 		this_object.components = ['Shrapnel', 'Shrapnel', 'Shrapnel', 'Shrapnel', 'Shrapnel', 'Shrapnel', 'Shrapnel', 'Shrapnel', 'Shrapnel', 'Shrapnel', 'Shrapnel', 'Shrapnel', 'Shrapnel', 'Shrapnel', 'Shrapnel', 'Shrapnel']
 		this_object.foreground_colour = libtcod.purple
 		this_object.description = "Don't fuck with this big ass bomb"
-		this_object.internal_kinetic_energy = 1000000
+		this_object.internal_kinetic_energy = 100000
 		this_object.ammunition_for = ['Gun']
+		
+	elif object_name == 'Liquor Bomb':
+		this_object = get_predesigned_object_by_name('Generic Object')
+		this_object.char = 'u'
+		this_object.size = 1
+		this_object.material = 'Glass'
+		this_object.components = ['J&B', 'J&B', 'J&B', 'J&B', 'J&B', 'J&B', 'J&B', 'J&B']
+		this_object.foreground_colour = libtcod.light_yellow
+		this_object.description = "Delicious whiskey bomb"
+		this_object.internal_kinetic_energy = 1000000
 		
 	elif object_name == 'Filing Cabinet':
 		this_object = get_predesigned_object_by_name('Generic Object')
@@ -4486,7 +4629,6 @@ def get_object_by_name(object_name):
 		this_object.material = 'Metal'
 		this_object.inventory = ['Locker Key', 'J&B']
 		this_object.foreground_colour = libtcod.light_grey
-		this_object.description = "A basic " + object_name
 		
 	elif object_name == 'Locker Key':
 		this_object = get_predesigned_object_by_name('Generic Object')
@@ -4494,7 +4636,6 @@ def get_object_by_name(object_name):
 		this_object.size = 0.1
 		this_object.material = 'Metal'
 		this_object.foreground_colour = libtcod.white
-		this_object.description = "A basic " + object_name
 		this_object.key_for = 'Locker'
 
 	elif object_name == 'Computer':
@@ -4503,7 +4644,6 @@ def get_object_by_name(object_name):
 		this_object.size = 2
 		this_object.material = 'Plastic'
 		this_object.foreground_colour = libtcod.light_blue
-		this_object.description = "A basic " + object_name
 
 	elif object_name == 'J&B':
 		this_object = get_predesigned_object_by_name('Generic Object')
@@ -4511,7 +4651,6 @@ def get_object_by_name(object_name):
 		this_object.size = 0.5
 		this_object.material = 'Glass'
 		this_object.foreground_colour = libtcod.light_purple
-		this_object.description = "A basic " + object_name
 
 	elif object_name == 'Chair':
 		this_object = get_predesigned_object_by_name('Generic Object')
@@ -4519,7 +4658,6 @@ def get_object_by_name(object_name):
 		this_object.size = 3
 		this_object.material = 'Wood'
 		this_object.foreground_colour = libtcod.light_orange
-		this_object.description = "A basic " + object_name
 
 	elif object_name == 'Watercolour Paints':
 		this_object = get_predesigned_object_by_name('Generic Object')
@@ -4527,7 +4665,6 @@ def get_object_by_name(object_name):
 		this_object.size = 1
 		this_object.material = 'Wood'
 		this_object.foreground_colour = libtcod.lighter_green
-		this_object.description = "A basic " + object_name
 
 	elif object_name == 'Gun':
 		this_object = get_predesigned_object_by_name('Generic Object')
@@ -4535,8 +4672,8 @@ def get_object_by_name(object_name):
 		this_object.size = 0.5
 		this_object.material = 'Metal'
 		this_object.foreground_colour = libtcod.light_grey
-		this_object.description = "A basic " + object_name
 		this_object.attack_function = 'Gun'
+		this_object.attack_range = 20
 		this_object.internal_kinetic_energy = 1000
 
 	elif object_name == 'Flamethrower':
@@ -4545,8 +4682,8 @@ def get_object_by_name(object_name):
 		this_object.size = 2
 		this_object.material = 'Metal'
 		this_object.foreground_colour = libtcod.lighter_red
-		this_object.description = "A basic " + object_name
 		this_object.attack_function = 'Flamethrower'
+		this_object.attack_range = 20
 		this_object.internal_kinetic_energy = 1000
 		
 	elif object_name == 'Rocket Launcher':
@@ -4555,9 +4692,9 @@ def get_object_by_name(object_name):
 		this_object.size = 2
 		this_object.material = 'Metal'
 		this_object.foreground_colour = libtcod.dark_yellow
-		this_object.description = "A basic " + object_name
 		this_object.attack_function = 'Rocket Launcher'
-		this_object.internal_kinetic_energy = 10000
+		this_object.attack_range = 20
+		this_object.internal_kinetic_energy = 1000000
 
 	elif object_name == 'Bullet':
 		this_object = get_predesigned_object_by_name('Generic Object')
@@ -4568,7 +4705,6 @@ def get_object_by_name(object_name):
 		this_object.material = 'Metal'
 		this_object.foreground_colour = libtcod.light_grey
 		this_object.ammunition_for = ['Gun']
-		this_object.description = "A basic " + object_name
 
 	elif object_name == 'Flame Tank':
 		this_object = get_predesigned_object_by_name('Generic Object')
@@ -4580,7 +4716,6 @@ def get_object_by_name(object_name):
 		this_object.foreground_colour = libtcod.light_grey
 		this_object.components = ['Fire', 'Fire', 'Fire']
 		this_object.ammunition_for = ['Flamethrower']
-		this_object.description = "A basic " + object_name
 		
 	elif object_name == 'Rocket':
 		this_object = get_predesigned_object_by_name('Generic Object')
@@ -4592,7 +4727,6 @@ def get_object_by_name(object_name):
 		this_object.foreground_colour = libtcod.dark_green
 		this_object.components = ['Shrapnel', 'Shrapnel', 'Shrapnel', 'Shrapnel', 'Shrapnel', 'Shrapnel', 'Shrapnel', 'Shrapnel', 'Shrapnel']
 		this_object.ammunition_for = ['Rocket Launcher']
-		this_object.description = "A basic " + object_name
 		
 	elif object_name == 'Shrapnel':
 		this_object = get_predesigned_object_by_name('Generic Object')
@@ -4601,7 +4735,6 @@ def get_object_by_name(object_name):
 		this_object.material = 'Metal'
 		this_object.foreground_colour = libtcod.light_grey
 		this_object.components = []
-		this_object.description = "A basic " + object_name
 		
 	elif object_name == 'Brick':
 		this_object = get_predesigned_object_by_name('Generic Object')
@@ -4610,7 +4743,6 @@ def get_object_by_name(object_name):
 		this_object.material = 'Stone'
 		this_object.foreground_colour = libtcod.light_grey
 		this_object.components = []
-		this_object.description = "A basic " + object_name
 
 	elif object_name == 'Fire':
 		this_object = get_predesigned_object_by_name('Generic Object')
@@ -4618,7 +4750,6 @@ def get_object_by_name(object_name):
 		this_object.size = 1
 		this_object.material = 'Metal'
 		this_object.foreground_colour = libtcod.light_red
-		this_object.description = "A basic " + object_name
 		this_object.on_fire = True
 		this_object.stackable = False
 
@@ -4671,6 +4802,7 @@ def get_object_by_name(object_name):
 		if percentage_chance(50): this_object.inventory.append('Bullet')
 		if percentage_chance(25): this_object.inventory.append('Flame Tank')
 		if percentage_chance(25): this_object.inventory.append('Rocket')
+
 		
 	elif object_name == 'Radio':
 		this_object = get_predesigned_object_by_name('Generic Object')
@@ -4688,7 +4820,7 @@ def get_object_by_name(object_name):
 		this_object.on_argument = ('bto.ogg')
 		
 		this_object.off_function = play_music
-		this_object.off_argument = None
+		this_object.off_argument = 'Pause'
 		
 	elif object_name == 'Generator':
 		this_object = get_predesigned_object_by_name('Generic Object')
@@ -4709,7 +4841,7 @@ def get_object_by_name(object_name):
 		
 	elif object_name == 'Lamp':
 		this_object = get_predesigned_object_by_name('Generic Object')
-		this_object.char = 'M'
+		this_object.char = '^'
 		this_object.size = 1
 		this_object.material = 'Glass'
 		this_object.foreground_colour = libtcod.dark_yellow
@@ -4719,7 +4851,7 @@ def get_object_by_name(object_name):
 		this_object.on_off_state = 'On'
 		this_object.attached_to_main_power = True
 		
-		this_object.light_source = True
+		this_object.light_source = 'Omni'
 		this_object.light_radius = 8
 		
 		this_object.on_function = this_object.adjust_light_radius
@@ -4739,11 +4871,11 @@ def get_object_by_name(object_name):
 		this_object.functions_on_off = True
 		this_object.on_off_state = 'Off'
 		
-		this_object.light_source = True
+		this_object.light_source = 'Directional'
 		this_object.light_radius = 0
 		
 		this_object.on_function = this_object.adjust_light_radius
-		this_object.on_argument = 15
+		this_object.on_argument = 20
 		
 		this_object.off_function = this_object.adjust_light_radius
 		this_object.off_argument = 0
@@ -4771,9 +4903,11 @@ def get_object_by_name(object_name):
 		this_object = get_predesigned_object_by_name('Humanoid')
 		this_object.foreground_colour = libtcod.white
 		this_object.description = "Player"
+		this_object.inventory = ['Flashlight', 'Rocket Launcher', 'Rocket', 'Rocket', 'Rocket', 'Rocket', 'Rocket', 'Mega Bomb', 'Flamethrower', 'Flame Tank', 'Flame Tank', 'Flame Tank', 'Flame Tank']
 		this_object.unit = get_unit_by_name('Scientist')
-		this_object.light_source = True
+		this_object.light_source = 'Omni'
 		this_object.light_radius = 7
+		this_object.on_off_state = 'On'
 
 	elif object_name == 'Scientist':
 		this_object = get_predesigned_object_by_name('Humanoid')
@@ -4802,6 +4936,7 @@ def get_object_by_name(object_name):
 		print '********************* NEED TO CREATE ' + object_name
 		
 	this_object.name = object_name
+	if not this_object.description: this_object.description = 'A basic ' + this_object.name
 	this_object.establish_properties()
 	return this_object
 
@@ -4820,7 +4955,7 @@ def get_predesigned_object_by_name(predesigned_object_name):
 			size=5,
 			material='Metal',
 			weight=None,
-			indestructible = False,
+			indestructible = 1,
 			affixed_to_ground = False,
 			blocks_sightline = False,
 			destroyed = False,
@@ -4848,7 +4983,7 @@ def get_predesigned_object_by_name(predesigned_object_name):
 			size=6,
 			material='Flesh',
 			weight=None,
-			indestructible=False,
+			indestructible=1,
 			affixed_to_ground=False,
 			blocks_sightline=False,
 			destroyed=False,
@@ -4880,7 +5015,7 @@ def get_predesigned_object_by_name(predesigned_object_name):
 			material='Stone',
 			# Material object is made out of.  Affects the weight along with the size.  Options are 'Flesh' 'Wood' 'Metal' 'Stone' 'Glass' 'Plastic' 'Cloth'
 			weight=None,  # Leave this as default value, game handles it
-			indestructible=False,  # Exactly what it says.  True or False.
+			indestructible=1,  # Exactly what it says.  True or False.
 			affixed_to_ground=True,  # Exactly what it says.  True or False.
 			blocks_sightline=False,
 			# Blocks the cone of visibility in player's field of vision.  Leave False unless object is huge or something as True can be annoying.
@@ -4915,7 +5050,7 @@ def get_predesigned_object_by_name(predesigned_object_name):
 			size=9,
 			material='Wood',
 			weight=None,
-			indestructible=False,
+			indestructible=1,
 			affixed_to_ground=True,
 			blocks_sightline=True,
 			destroyed=False,
@@ -5007,7 +5142,7 @@ def get_material_stats_by_name(material_name, stat_requested):
 		if stat_requested == 'Weight':
 			weight = 30
 		elif stat_requested == 'Break Resistance':
-			break_resistance = 50
+			break_resistance = 30
 	elif material_name == 'Wood':
 		if stat_requested == 'Weight':
 			weight = 30
@@ -5015,12 +5150,12 @@ def get_material_stats_by_name(material_name, stat_requested):
 			break_resistance = 60
 	elif material_name == 'Metal':
 		if stat_requested == 'Weight':
-			weight = 50
+			weight = 40
 		elif stat_requested == 'Break Resistance':
 			break_resistance = 95
 	elif material_name == 'Stone':
 		if stat_requested == 'Weight':
-			weight = 40
+			weight = 35
 		elif stat_requested == 'Break Resistance':
 			break_resistance = 95
 	elif material_name == 'Glass':
@@ -5032,7 +5167,7 @@ def get_material_stats_by_name(material_name, stat_requested):
 		if stat_requested == 'Weight':
 			weight = 10
 		elif stat_requested == 'Break Resistance':
-			break_resistance = 70
+			break_resistance = 80
 	elif material_name == 'Cloth':
 		if stat_requested == 'Weight':
 			weight = 10
@@ -5416,37 +5551,1064 @@ def get_dialogue_by_ID(dialogue_ID):
 		this_dialogue.feelings_range = [5, 10]
 			
 	return this_dialogue
+	
+def generate_object_appendage_status_panel(this_object, width = None, height = None):
+	text_array = []
+	
+	if not this_object:
+		return Screen_Console(written_text = text_array, width = width, height = height)
+
+	if not this_object.unit:
+		text_array.append('Object is not a unit class, has no appendages.')
+	else:
+		text_array.append(this_object.name)
+		text_array.append(Render_Bar(value = this_object.condition, text = '', max_value = 100, colour = libtcod.light_red))
+		text_array.append('')
+		text_array.append('')
+		text_array.append("Condition of " + this_object.name + "'s appendages.")
+		text_array.append('#' + 'Head')
+		text_array.append(Render_Bar(value = this_object.unit.head.condition, text = '', max_value = 100, colour = libtcod.light_red))
+		text_array.append('#' + 'Torso')
+		text_array.append(Render_Bar(value = this_object.unit.torso.condition, text = '', max_value = 100, colour = libtcod.light_red))
+		text_array.append('#' + 'Right Arm')
+		text_array.append(Render_Bar(value = this_object.unit.rarm.condition, text = '', max_value = 100, colour = libtcod.light_red))
+		text_array.append('#' + 'Left Arm')
+		text_array.append(Render_Bar(value = this_object.unit.larm.condition, text = '', max_value = 100, colour = libtcod.light_red))
+		text_array.append('#' + 'Right Leg')
+		text_array.append(Render_Bar(value = this_object.unit.rleg.condition, text = '', max_value = 100, colour = libtcod.light_red))
+		text_array.append('#' + 'Left Leg')
+		text_array.append(Render_Bar(value = this_object.unit.lleg.condition, text = '', max_value = 100, colour = libtcod.light_red))
+	
+	this_console = Screen_Console(written_text = text_array, width = width, height = height)
+	
+	return this_console
+
+
+def generate_object_info_panel(this_object, width = None, height = None, include_info = True, include_functions = True, include_equipped = True, include_debug = True, include_inventory = True, include_components = True, include_description = True, supplementary_text = None):
+	text_array = []
+	
+	if this_object:
+		
+		text_array.append(this_object.name)
+		
+		text_array.append(Render_Bar(value = this_object.condition, text = '', max_value = 100, colour = libtcod.light_red))
+		
+		if include_info:
+			text_array.append('#Info')
+			text_array.append(this_object.material)
+			text_array.append(str(int(this_object.size)) + ' cu.ft')
+			text_array.append(str(int(this_object.weight)) + ' lbs')
+			
+		if include_functions:		
+			functions_header_appended = False
+			functions_header = '#Functions'
+			
+			if this_object.functions_as_door:
+				if not functions_header_appended: 
+					functions_header_appended = True
+					text_array.append(functions_header)
+				text_array.append('Open/Close')
+			if this_object.functions_as_lock:
+				if not functions_header_appended: 
+					functions_header_appended = True
+					text_array.append(functions_header)
+				text_array.append('Lock/Unlock')
+			if this_object.functions_on_off:
+				if not functions_header_appended: 
+					functions_header_appended = True
+					text_array.append(functions_header)
+				text_array.append('Activate/Deactiv')
+		
+		if include_equipped:
+			if this_object.equipped:
+				text_array.append('#Equip')
+				text_array.append(str(this_object.equipped.name))
+			
+		if include_debug:
+			text_array.append('#Debug')
+			text_array.append('ID   : ' + str(this_object.ID))
+			if this_object.unit: text_array.append('Power: ' + str(this_object.unit.throw_weight))
+			text_array.append('Fire : ' + str(this_object.on_fire))
+			text_array.append('Stack: ' + str(this_object.stackable))
+			text_array.append('Qty  : ' + str(this_object.quantity))
+			text_array.append('Energ: ' + str(this_object.internal_kinetic_energy))
+			text_array.append('Affix: ' + str(this_object.affixed_to_ground))
+			
+			if include_inventory:
+				if this_object.inventory:
+				
+					inventory_header_appended = False
+					inventory_header = '#Inventory'
+					
+					string_inventory = ''
+					for inventory_object in this_object.inventory:
+						string_inventory = string_inventory + inventory_object.name + ', '
+						
+						if not inventory_header_appended: 
+							inventory_header_appended = True
+							text_array.append(inventory_header)
+						
+					if string_inventory[-2:] == ", ": string_inventory = string_inventory[:-2]
+					
+					if string_inventory:
+						text_array.append(string_inventory)
+			
+
+			
+			if this_object.task_queue:
+				text_array.append('#Task')
+				text_array.append('Task: ' + str(this_object.task_queue[0].task_type))
+				if this_object.task_queue[0].object_source_of_task:text_array.append('Sourc: ' + str(this_object.task_queue[0].object_source_of_task.name))
+				if this_object.task_queue[0].object_moving_to:text_array.append('MovTo: ' + str(this_object.task_queue[0].name_of_object_moving_to))
+				if this_object.task_queue[0].object_to_interact_with:text_array.append('Intrc: ' + str(this_object.task_queue[0].object_to_interact_with.name))
+		
+		if include_components:
+			
+			components_header_appended = False
+			components_header = '#Components'
+			
+			string_components = ''
+			for component in this_object.components:
+				string_components = string_components + component + ', '
+				
+				if not components_header_appended: 
+					components_header_appended = True
+					text_array.append(components_header)
+				
+			if string_components[-2:] == ", ": string_components = string_components[:-2]
+			
+			if string_components:
+				text_array.append(string_components)
+			
+		if include_description:
+			text_array.append('#Description')
+			text_array.append(this_object.description)
+			
+		if supplementary_text:
+			for sup_line in supplementary_text:
+				text_array.append(sup_line)
+	
+	this_console = Screen_Console(width = width, height = height, written_text = text_array, max_width = MAX_TOOLTIP_WIDTH)
+	return this_console
+	
+def generate_player_info_panel():
+	supplementary_text = []
+	supplementary_text.append('#Room')
+	supplementary_text.append(str(map[player.x][player.y].room_name))
+	supplementary_text.append('#Controls')
+	supplementary_text.append('Grab       : E')
+	supplementary_text.append('Open/Close : R')
+	supplementary_text.append('Pick Up    : F')
+	supplementary_text.append('Lock/Unlock: C')
+	supplementary_text.append('Actv/Deactv: V')
+	supplementary_text.append('Attack     : R-Click')
+	
+	player_info_panel = generate_object_info_panel(player, width = OBJECT_INFO_BAR_WIDTH, height = PANEL_HEIGHT, include_info = False, include_functions = False, include_equipped = True, include_debug = False, include_inventory = False, include_components = False, include_description = False, supplementary_text = supplementary_text)
+	return player_info_panel
+	
+def generate_message_panel():
+	message_panel = Screen_Console(width = MESSAGE_PANEL_WIDTH, height = PANEL_HEIGHT, written_text = game_msgs)
+	return message_panel
+	
+class Line_On_Screen_Console:
+	def __init__(self, x, y, text, colour = libtcod.white, return_value = None, return_function = None, disable_scrolling = False, render_bar = None):
+		self.x = x
+		self.y = y
+		self.text = text
+		self.colour = colour
+		self.return_value = return_value
+		self.return_function = return_function
+		self.disable_scrolling = disable_scrolling
+		
+		self.temporary_colour = None
+		
+		self.render_bar = render_bar
+		
+		if self.render_bar:
+			self.colour = self.render_bar.colour
+			self.text = self.render_bar.text
+		
+class Render_Bar:
+	def __init__(self, value, width = None, text = '', max_value = 100, colour = libtcod.light_red):
+		self.value = value
+		self.width = width
+		self.text = text
+		self.max_value = max_value
+		self.colour = colour
+		
+class Screen_Console:		
+	def __init__(self, 
+		x = None, 
+		y = None, 
+		width = None, 
+		height = None, 
+		header = None, 
+		min_width = MIN_CONSOLE_WIDTH, 
+		max_width = MAX_CONSOLE_WIDTH, 
+		min_height = MIN_CONSOLE_HEIGHT, 
+		max_height = MAX_CONSOLE_HEIGHT, 
+		header_colour = libtcod.yellow,
+		written_text = [],
+		list_of_choices = [],
+		prompt_for_choice = False,
+		main_screen_console = False):
+
+		self.x = x
+		self.y = y
+		self.width = width
+		self.height = height
+		self.header = header
+		self.min_width = min_width
+		self.max_width = max_width
+		self.min_height = min_height
+		self.max_height = max_height
+		self.header_colour = header_colour
+		self.written_text = written_text
+		self.list_of_choices = list_of_choices
+		self.prompt_for_choice = prompt_for_choice
+		self.main_screen_console = main_screen_console
+		
+		if self.main_screen_console:
+			self.min_width = int(SCREEN_WIDTH / 6)
+			self.max_width = int(SCREEN_WIDTH / 1.5)
+			self.min_height = int(SCREEN_HEIGHT / 6)
+			self.max_height = int(SCREEN_HEIGHT / 1.5)
+		
+		self.list_of_choices_text_only = []
+		self.list_of_message_objects = []
+		self.list_of_dialogue_objects = []
+		
+		self.message_scroll_state = 0
+		self.max_scroll_value = 0
+		
+		self.total_text_height = 0
+
+		if self.written_text:
+			if isinstance(self.written_text[0], Message):
+				self.convert_message_objects_to_text()
+			elif isinstance(self.written_text[0], Dialogue):
+				self.convert_dialogue_objects_to_text()
+		
+		self.all_line_on_screen_consoles = []
+		
+		self.create_all_unwrapped_text_array_including_header()
+		
+		if not self.width: self.determine_width()
+		
+		self.create_line_on_screen_object_array()
+		
+		if not self.x and not self.y:
+			self.determine_x_y()
+		
+		if self.total_text_height > self.height:
+			self.add_scroll_buttons()
+			
+		if self.all_line_on_screen_consoles:
+			self.max_scroll_value = len(self.all_line_on_screen_consoles) - (self.height - 2)
+			if self.max_scroll_value < 0:
+				self.max_scroll_value = 0
+			
+			if self.list_of_message_objects: self.message_scroll_state = self.max_scroll_value
+		
+		self.this_panel = libtcod.console_new(self.width, self.height)
+		libtcod.console_set_default_foreground(self.this_panel, libtcod.white)
+		
+	def add_scroll_buttons(self):
+		self.all_line_on_screen_consoles.append(Line_On_Screen_Console(x = self.width - 2, y = 1, text = '^', return_function = self.scroll_up, disable_scrolling = True))
+		self.all_line_on_screen_consoles.append(Line_On_Screen_Console(x = self.width - 2, y = self.height - 2, text = 'V', return_function = self.scroll_down, disable_scrolling = True))
+			
+	def scroll_up(self):
+		self.message_scroll_state -= 1
+		if self.message_scroll_state < 0: self.message_scroll_state = 0
+		
+	def scroll_down(self):
+		self.message_scroll_state += 1
+		if self.message_scroll_state > self.max_scroll_value: self.message_scroll_state = self.max_scroll_value
+		
+	def show_appendage_info(self):
+		main_game_ui.show_object_info = False
+		main_game_ui.show_appendage_info = True
+		self.message_scroll_state = 0
+
+	def show_object_info(self):
+		main_game_ui.show_object_info = True
+		main_game_ui.show_appendage_info = False
+		self.message_scroll_state = 0
+		
+	def convert_message_objects_to_text(self):
+		self.list_of_message_objects = self.written_text
+		self.written_text = []
+		for message_object in self.list_of_message_objects:
+			self.written_text.append(message_object.text)
+			
+	def convert_dialogue_objects_to_text(self):
+		self.list_of_dialogue_objects = self.written_text
+		self.written_text = []
+		for dialogue_object in self.list_of_dialogue_objects:
+			self.written_text.append(dialogue_object.dialogue)
+		
+	def create_all_unwrapped_text_array_including_header(self):
+		self.all_unwrapped_text_array_including_header = []
+		
+		if self.header: self.all_unwrapped_text_array_including_header.append(self.header)
+		
+		if self.written_text: 
+			self.all_unwrapped_text_array_including_header = self.all_unwrapped_text_array_including_header + self.written_text
+			
+		if self.list_of_choices:
+			if isinstance(self.list_of_choices[0], Object):
+				for object in self.list_of_choices:
+					self.list_of_choices_text_only.append(object.name)
+			elif isinstance(self.list_of_choices[0], Message):
+				for message in self.list_of_choices:
+					self.list_of_choices_text_only.append(message.text)
+			elif isinstance(self.list_of_choices[0], Dialogue):
+				for dialogue in self.list_of_choices:
+					self.list_of_choices_text_only.append(dialogue.dialogue)
+			else:
+				for text_choice in self.list_of_choices:
+					self.list_of_choices_text_only.append(text_choice)
+					
+			self.all_unwrapped_text_array_including_header = self.all_unwrapped_text_array_including_header + self.list_of_choices_text_only
+			
+	def determine_width(self):
+		variable_width = self.min_width
+		
+		if self.all_unwrapped_text_array_including_header:
+			for text_line in self.all_unwrapped_text_array_including_header:
+				if isinstance(text_line, Render_Bar):
+					continue
+					
+				if len(text_line) > variable_width:
+					variable_width = len(text_line)
+					
+			variable_width += 4
+		
+			if variable_width > self.max_width:
+				variable_width = self.max_width
+					
+		self.width = variable_width
+		
+		if self.prompt_for_choice == 'Text Entry':
+			self.width = MAX_CONSOLE_WIDTH + 10
+
+	def create_line_on_screen_object_array(self):
+		
+		line_count = 2
+		message_object_count = 0
+
+		for line_of_text in self.written_text:
+			this_colour = libtcod.white
+			
+			if not line_of_text:
+				self.all_line_on_screen_consoles.append(Line_On_Screen_Console(x = 2, y = line_count, text = ''))
+				line_count += 1
+				continue
+			
+			if isinstance(line_of_text, Render_Bar):
+				self.all_line_on_screen_consoles.append(Line_On_Screen_Console(x = 2, y = line_count, text = line_of_text.text, render_bar = line_of_text))
+				line_count += 1
+				continue
+
+			
+			if line_of_text[0] == '#':
+				this_colour = libtcod.yellow
+				self.all_line_on_screen_consoles.append(Line_On_Screen_Console(x = 2, y = line_count, text = ''))
+				line_of_text = line_of_text[1:]
+				line_count += 1
+				
+			textwrapped_line = textwrap.wrap(line_of_text, (self.width - 4))
+			
+			count = 0
+			for wrapped_line in textwrapped_line:
+				if self.list_of_message_objects:
+					if count == 0:
+						wrapped_line = '@' + wrapped_line
+					else:
+						wrapped_line = ' ' + wrapped_line
+				line_on_screen_object = Line_On_Screen_Console(x = 2, y = line_count, text = wrapped_line, colour = this_colour)
+				if self.list_of_message_objects:
+					line_on_screen_object.colour = self.list_of_message_objects[message_object_count].colour
+				self.all_line_on_screen_consoles.append(line_on_screen_object)
+				line_count += 1
+				count += 1
+				
+			message_object_count += 1
+		
+		menu_count = 0
+		
+		if self.written_text and self.list_of_choices_text_only:
+			self.all_line_on_screen_consoles.append(Line_On_Screen_Console(x = 2, y = line_count, text = ''))
+			line_count += 1
+		
+		for menu_choice in self.list_of_choices_text_only:
+			textwrapped_line = textwrap.wrap(menu_choice, (self.width - 4))
+			for wrapped_line in textwrapped_line:
+				self.all_line_on_screen_consoles.append(Line_On_Screen_Console(x = 2, y = line_count, text = wrapped_line, colour = libtcod.lightest_orange, return_value = self.list_of_choices[menu_count]))
+				line_count += 1
+			menu_count += 1
+		
+		self.total_text_height = line_count + 2
+		
+		if not self.height:
+			self.height = line_count + 2
+			
+			if self.height > self.max_height:
+				self.height = self.max_height
+			
+	def determine_x_y(self):
+		if self.main_screen_console:
+			default_x = (SCREEN_WIDTH / 2) - (self.width / 2)
+			default_y = (SCREEN_HEIGHT / 2) - (self.height / 2)
+
+		else:
+			default_x = (MAP_WIDTH / 2) - (self.width / 2)
+			default_y = (MAP_HEIGHT / 2) - (self.height / 2)
+		
+		if self.x == None: 
+			self.x = default_x
+			if self.x < 0: self.x = 0
+			
+		if self.y == None:
+			self.y = default_y
+			if self.y < 0: self.y = 0
+			
+	def display_render_bar(self, x, y, render_bar_object):
+		
+		if render_bar_object.text:
+			render_bar_object.text = render_bar_object.text + ': '
+			
+		if not render_bar_object.width:
+			render_bar_object.width = (self.width - 4)
+			
+		if render_bar_object.width > (self.width - 4):
+			render_bar_object.width = (self.width - 4)
+	
+		# render a bar (HP, experience, etc). first calculate the width of the bar
+		bar_width = int(float(render_bar_object.value) / render_bar_object.max_value * render_bar_object.width)
+		
+		# render the background first
+		libtcod.console_set_default_background(self.this_panel, render_bar_object.colour * 0.50)
+		libtcod.console_rect(self.this_panel, x, y, render_bar_object.width, 1, False, libtcod.BKGND_SET)
+
+		# now render the bar on top
+		libtcod.console_set_default_background(self.this_panel, render_bar_object.colour)
+		if bar_width > 0:
+			libtcod.console_rect(self.this_panel, x, y, bar_width, 1, False, libtcod.BKGND_SET)
+
+		libtcod.console_set_default_foreground(self.this_panel, libtcod.white)
+		libtcod.console_print_ex(self.this_panel, x + render_bar_object.width / 2, y, libtcod.BKGND_NONE, libtcod.CENTER, render_bar_object.text + str(render_bar_object.value) + '/' + str(render_bar_object.max_value))
+		
+		
+	def display_me(self, f_transp = 1.0, b_transp = 1.0):
+		global key, mouse
+		
+		while(True):
+		
+			libtcod.console_clear(self.this_panel)
+			libtcod.console_set_default_foreground(self.this_panel, libtcod.white)
+			libtcod.console_set_default_background(self.this_panel, libtcod.black)
+			libtcod.console_print_frame(self.this_panel, 0, 0, self.width, self.height, libtcod.BKGND_NONE, libtcod.CENTER, self.header)
+		
+			if self.all_line_on_screen_consoles:
+
+				for on_screen_line_object in self.all_line_on_screen_consoles:
+					
+					y_value = on_screen_line_object.y - self.message_scroll_state
+					
+					if on_screen_line_object.disable_scrolling:
+						y_value = on_screen_line_object.y
+						
+					if (y_value <= 1 or y_value >= self.height - 2) and not on_screen_line_object.disable_scrolling:
+						continue
+					
+					this_colour = on_screen_line_object.colour
+					
+					if on_screen_line_object.temporary_colour:
+						this_colour = on_screen_line_object.temporary_colour
+						on_screen_line_object.temporary_colour = None
+					
+					if on_screen_line_object.render_bar:
+						self.display_render_bar(on_screen_line_object.x, y_value, on_screen_line_object.render_bar)
+					else:
+						libtcod.console_set_default_foreground(self.this_panel, this_colour)
+						libtcod.console_print_ex(self.this_panel, on_screen_line_object.x, y_value, libtcod.BKGND_NONE, libtcod.LEFT, on_screen_line_object.text)
+						
+			libtcod.console_set_default_foreground(self.this_panel, libtcod.white)
+			libtcod.console_set_default_background(self.this_panel, libtcod.black)
+
+			libtcod.console_blit(self.this_panel, 0, 0, self.width, self.height, 0, self.x, self.y, f_transp, b_transp)
+
+			if self.prompt_for_choice == 'Multiple Choice':
+
+				libtcod.console_flush()
+				
+				libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS | libtcod.EVENT_MOUSE, key, mouse)
+
+				if mouse.rbutton_pressed or key.vk == libtcod.KEY_ESCAPE:
+					return None 
+
+				clicked_option = self.check_mouse_on_panel()
+
+				if clicked_option:
+					return clicked_option
+					
+			elif self.prompt_for_choice == 'Text Entry':
+			
+				command = ""
+				x = 2
+				
+				libtcod.console_print_ex(self.this_panel, x, self.height - 3, libtcod.BKGND_NONE, libtcod.LEFT, '_    ')
+
+				while not libtcod.console_is_window_closed():
+				
+					libtcod.console_print_ex(self.this_panel, x, self.height - 3, libtcod.BKGND_NONE, libtcod.LEFT, '_')
+					libtcod.console_blit(self.this_panel, 0, 0, self.width, self.height, 0, self.x, self.y, f_transp, b_transp)
+					libtcod.console_flush()
+
+					key = libtcod.console_wait_for_keypress(libtcod.KEY_PRESSED)
+
+					if key.vk == libtcod.KEY_BACKSPACE and x > 0:
+						libtcod.console_print_ex(self.this_panel, x, self.height - 3, libtcod.BKGND_NONE, libtcod.LEFT, ' ')
+						command = command[:-1]
+						x -= 1
+					elif key.vk == libtcod.KEY_ENTER:
+						return command
+					elif key.vk == libtcod.KEY_ESCAPE:
+						command = None
+						return command
+					elif key.c > 0:
+						letter = chr(key.c)
+						libtcod.console_print_ex(self.this_panel, x, self.height - 3, libtcod.BKGND_NONE, libtcod.LEFT, letter)
+						command += letter  #add to the string
+						x += 1
+						
+					if x < 2: x = 2
+					if x > self.width - 3: x = self.width - 3
+			
+			else:			
+				return None
+
+	def check_mouse_on_panel(self):
+		global mouse
+		
+		(x, y) = (mouse.cx, mouse.cy)
+		
+		for click_point in self.all_line_on_screen_consoles:
+
+			screen_x_minimum = click_point.x + self.x
+			screen_x_maximum = click_point.x + self.x + len(click_point.text)
+			
+			screen_y = click_point.y + self.y - self.message_scroll_state
+			
+			if click_point.disable_scrolling:
+				screen_y = click_point.y + self.y
+
+			if screen_x_minimum <= x and screen_x_maximum >= x and screen_y == y:
+			
+				if click_point.return_value:
+					click_point.temporary_colour = libtcod.light_green
+					
+				if mouse.lbutton_pressed:
+					if click_point.return_function:
+						#Message('doing it', 'Narrator')
+						click_point.return_function()
+						
+					if click_point.return_value:
+						#Message(click_point.return_value, 'Narrator')
+						return click_point.return_value
+					else:
+						pass
+						#Message(click_point.text, 'Narrator')
+				
+		return None
+		
+		
 
 	
-libtcod.console_set_custom_font('ascii_font_2.png', libtcod.FONT_TYPE_GREYSCALE | libtcod.FONT_LAYOUT_ASCII_INROW)
-#libtcod.console_set_custom_font('ascii_font_7.png', libtcod.FONT_TYPE_GREYSCALE | libtcod.FONT_LAYOUT_ASCII_INROW)
-#libtcod.console_set_custom_font('ascii_font_8.png', libtcod.FONT_TYPE_GREYSCALE | libtcod.FONT_LAYOUT_ASCII_INROW)
+class Scoreboard:		
+	# a tile of the map and its properties
+	def __init__(self):
+	
+		# Constant score values:
+		self.VALUE_THE_THING = 10
+		self.VALUE_SCIENTIST = -2
+		self.VALUE_DOG = -1
+	
+		# Variables
+		self.session_name = 'Player Name'
+		self.session_turns_taken = 0
+		self.session_the_thing_killed = False
+		self.session_scientists_killed = 0
+		self.session_dogs_killed = 0
+		self.session_total_score = 0
 
-libtcod.console_init_root(SCREEN_WIDTH, SCREEN_HEIGHT, 'python/libtcod tutorial', False)
+		self.all_time_turns_taken = 0
+		self.all_time_the_thing_killed = 0
+		self.all_time_scientists_killed = 0
+		self.all_time_dogs_killed = 0
+		self.all_time_total_score = 0
+		
+	def humanoid_killed(self):
+		self.session_scientists_killed += 1
+		self.session_total_score += self.VALUE_SCIENTIST
+	
+	def dog_killed(self):
+		self.session_dogs_killed += 1
+		self.session_total_score += self.VALUE_DOG
+	
+	def the_thing_killed(self):
+		self.session_the_thing_killed = True
+		self.session_total_score += self.VALUE_THE_THING
+		
+		
+	def reset_session(self, name):
+		self.session_name = name
+		self.session_turns_taken = 0
+		self.session_the_thing_killed = False
+		self.session_scientists_killed = 0
+		self.session_dogs_killed = 0
+		self.session_total_score = 0
+		
+	def add_session_data_to_total(self):
+		self.all_time_turns_taken += self.session_turns_taken
+		if self.session_the_thing_killed: self.all_time_the_thing_killed += 1
+		self.all_time_scientists_killed += self.session_scientists_killed
+		self.all_time_dogs_killed += self.session_dogs_killed
+		self.all_time_total_score += self.session_total_score
+		
+	def return_all_scores_as_text_array(self):
+		score_data_array = []
+		
+		score_data_array.append('Player Name:               ' + self.session_name)
+		score_data_array.append('')
+		score_data_array.append('Session Turns Taken:        ' + str(self.session_turns_taken))
+		score_data_array.append('Session The Thing Killed:   ' + str(self.session_the_thing_killed))
+		score_data_array.append('Session Scientists Killed:  ' + str(self.session_scientists_killed))
+		score_data_array.append('Session Dogs Killed:        ' + str(self.session_dogs_killed))
+		score_data_array.append('Session Total Score:        ' + str(self.session_total_score))
+		score_data_array.append('')
+		score_data_array.append('All Time Turns Taken:       ' + str(self.all_time_turns_taken))
+		score_data_array.append('All Time The Thing Killed:  ' + str(self.all_time_the_thing_killed))
+		score_data_array.append('All Time Scientists Killed: ' + str(self.all_time_scientists_killed))
+		score_data_array.append('All Time Dogs Killed:       ' + str(self.all_time_dogs_killed))
+		score_data_array.append('All Time Total Score:       ' + str(self.all_time_total_score))
+		score_data_array.append('')
+
+
+		return score_data_array
+		
+	def show_scoreboard(self):
+		score_data = self.return_all_scores_as_text_array()
+		scoreboard_panel = menu_prompt(written_text = score_data, header = 'Scoreboard', render_screen_before_displaying = False, main_screen_console = True)
+	
+	
+	
+def get_objects_under_mouse(x = None, y = None, ignore_walls = True):
+	global mouse, fov_map
+	# return a string with the names of all objects under the mouse
+
+	if not x and not y:
+		(x, y) = (mouse.cx, mouse.cy)
+	
+	if x < MAP_WIDTH and y < MAP_HEIGHT:
+		if libtcod.map_is_in_fov(fov_map, x, y):
+		
+			objects_under_mouse = [obj for obj in map[x][y].objects_on_this_tile]
+			
+			objects_to_remove = []
+			if ignore_walls:
+				for object in objects_under_mouse:
+					if object.name == 'Wall':
+						objects_to_remove.append(object)
+				for object in objects_to_remove:
+					objects_under_mouse.remove(object)
+					
+			return objects_under_mouse
+					
+	return []
+			
+
+def render_all(exclude_tooltips = False):
+	global fov_map
+	global fov_recompute
+	global clicked_object_name
+	global panel
+	global map
+	global light_source_fov_maps
+	global light_sources
+	global player
+	
+	if not player:
+		return False
+		libtcod.console_clear(main_game_ui.con)
+	else:
+		if fov_recompute:
+			# recompute FOV if needed (the player moved or something)
+			initialize_fov()
+			fov_recompute = False
+			
+			if not SHOW_ALL:
+				for y in range(MAP_HEIGHT):
+					for x in range(MAP_WIDTH):
+						map[x][y].illuminated = False
+						map[x][y].illuminated_left = False
+						map[x][y].illuminated_down = False
+						map[x][y].illuminated_right = False
+						map[x][y].illuminated_up = False
+						
+
+				for light_source in light_sources:
+					if light_source.on_off_state == 'On':
+						if light_source.distance_to(player) <= MAX_VISIBILITY_RADIUS + light_source.light_radius:
+							libtcod.map_compute_fov(fov_map, light_source.x, light_source.y, light_source.light_radius, FOV_LIGHT_WALLS, FOV_ALGO)
+							
+							up_offset = 0
+							down_offset = 0
+							left_offset = 0
+							right_offset = 0
+							
+							if light_source.light_source == 'Directional':
+
+								if light_source.direction == 'Up':
+									up_offset = light_source.light_radius - 1
+								elif light_source.direction == 'Down':
+									down_offset = light_source.light_radius
+								elif light_source.direction == 'Left':
+									left_offset = light_source.light_radius - 1
+								elif light_source.direction == 'Right':
+									right_offset = light_source.light_radius
+								else:
+									print 'Should not get here ' + light_source.name
+							
+							for y in range(normalize_to_map_height(light_source.y - light_source.light_radius + down_offset), normalize_to_map_height(light_source.y + light_source.light_radius - up_offset + 1)):
+								for x in range(normalize_to_map_width(light_source.x - light_source.light_radius + right_offset), normalize_to_map_width(light_source.x + light_source.light_radius - left_offset + 1)):
+									
+									x_normalized_around_zero = light_source.x - x
+									y_normalized_around_zero = light_source.y - y
+									
+									if light_source.light_source == 'Directional':
+										if up_offset or down_offset:
+											if abs(x_normalized_around_zero) >= abs(y_normalized_around_zero) and abs(x_normalized_around_zero) > 0:
+												continue
+										elif left_offset or right_offset:
+											if abs(y_normalized_around_zero) >= abs(x_normalized_around_zero) and abs(y_normalized_around_zero) > 0:
+												continue
+											
+									visible = libtcod.map_is_in_fov(fov_map, x, y)
+									if visible:
+
+										map[x][y].illuminated = True
+
+										if len(map[x][y].objects_on_this_tile) > 0:
+											if map[x][y].check_blocks_sight():
+												right_blocked = map[x + 1][y].check_blocks_sight()
+												down_blocked = map[x][y + 1].check_blocks_sight()
+												left_blocked = map[x - 1][y].check_blocks_sight()
+												up_blocked = map[x][y - 1].check_blocks_sight()
+												
+												map[x][y].illuminated = False
+												if light_source.x > x and not right_blocked: map[x][y].illuminated_right = True
+												if light_source.y > y and not down_blocked: map[x][y].illuminated_down = True
+												if light_source.x < x and not left_blocked: map[x][y].illuminated_left = True
+												if light_source.y < y and not up_blocked: map[x][y].illuminated_up = True
+
+							
+			libtcod.map_compute_fov(fov_map, player.x, player.y, MAX_VISIBILITY_RADIUS, FOV_LIGHT_WALLS, FOV_ALGO)
+				
+			for y in range(MAP_HEIGHT):
+				for x in range(MAP_WIDTH):
+					map[x][y].render_me()
+
+		libtcod.console_print_frame(main_game_ui.con, 0, 0, MAP_WIDTH, MAP_HEIGHT, libtcod.BKGND_NONE, libtcod.CENTER, None)
+		libtcod.console_blit(main_game_ui.con, 0, 0, MAP_WIDTH, MAP_HEIGHT, 0, 0, 0)
+		
+		if not exclude_tooltips: main_game_ui.tooltip_panels = get_tooltip_panels()
+		main_game_ui.render_all_panels()
+			
+	libtcod.console_flush()
+	
+def get_tooltip_panels():
+	global mouse
+
+	(mouse_x, mouse_y) = (mouse.cx, mouse.cy)
+	
+	all_tooltip_objects = []
+	all_tooltip_objects = get_objects_under_mouse(mouse_x, mouse_y)
+	
+	current_x_position = mouse_x + 2
+	current_y_position = mouse_y + 2
+
+	total_width = len(all_tooltip_objects) * MAX_TOOLTIP_WIDTH
+		
+	if current_x_position + total_width >= SCREEN_WIDTH:
+		difference = (current_x_position + total_width) - (SCREEN_WIDTH - 1)
+		current_x_position -= difference
+
+	original_y_posiiton = current_y_position
+	
+	all_tooltip_panels = []
+	
+	for tooltip_object in all_tooltip_objects:
+	
+			tooltip_panel = generate_object_info_panel(tooltip_object, width = MAX_TOOLTIP_WIDTH, height = None, include_info = True, include_functions = True, include_equipped = True, include_debug = False, include_inventory = False, include_components = False, include_description = False, supplementary_text = None)
+
+			current_y_position = original_y_posiiton
+		
+			if current_y_position + tooltip_panel.height >= SCREEN_HEIGHT:
+				difference = (current_y_position + tooltip_panel.height) - (SCREEN_HEIGHT - 1)
+				current_y_position -= difference
+
+			tooltip_panel.x = current_x_position
+			tooltip_panel.y = current_y_position
+			
+			all_tooltip_panels.append(tooltip_panel)
+			
+			current_x_position += tooltip_panel.width
+			
+	return all_tooltip_panels
+	
+def prompt_to_choose_dialogue(dialogue_object, pick_a_random_response = False, speaker_object = None):
+	if not dialogue_object.responses:
+		if MORE_ERROR_LOGGING:
+			print 'dialogue has no response options'
+			print ''
+		return None
+
+	response_ID = None
+
+	response_IDs = []
+	response_dialogue = []
+
+	for response_option_ID in dialogue_object.responses:
+		response_option_object = get_dialogue_by_ID(response_option_ID)
+		response_IDs.append(response_option_object.ID)
+		response_dialogue.append(response_option_object.dialogue)
+
+	if pick_a_random_response:
+		chosen_response_index = libtcod.random_get_int(0, 0, (len(response_dialogue) - 1))
+	else:
+		if speaker_object:
+			speaker_name = speaker_object.name
+		else:
+			speaker_name = 'Dialogue'
+		chosen_response = menu_prompt(options = response_dialogue, written_text = [dialogue_object], header = speaker_name)
+
+	if chosen_response:
+		response_ID = chosen_response
+
+	return response_ID
+	
+
+def menu_prompt(options = [], written_text = [], header = None, prompt_for_choice = None, render_screen_before_displaying = True, main_screen_console = False):
+
+	if not prompt_for_choice:
+		prompt_for_choice = 'Multiple Choice'
+	
+	if isinstance(written_text, str):
+		written_text = [written_text]
+		
+	if isinstance(options, Object):
+		options = [options]
+	
+	if written_text and not options:
+		options = ['Ok']
+	
+	text_options = []
+	
+	if options:
+		if isinstance(options[0], Object):
+		
+			if not header: header = 'Which object would you like to select?'
+		
+			for this_object in options:
+				optional_ID_tag = ''
+				
+				if ID_TAGS_ON: 	optional_ID_tag = '[' + str(this_object.ID) + '] '
+
+				quantity = ''
+				if this_object.quantity > 1:
+					quantity = ' (x' + str(this_object.quantity) + ')'
+
+				general_info = ''
+				
+				if this_object.functions_as_door:
+					general_info = general_info + ' (' + str(this_object.open_closed_state) + ')'
+				if this_object.functions_as_lock:
+					general_info = general_info + ' (' + str(this_object.locked_unlocked_state) + ')'
+				if this_object.functions_on_off:
+					general_info = general_info + ' (' + str(this_object.on_off_state) + ')'
+				
+				if not this_object.in_inventory_of:
+					general_info = general_info + ' (' + map[player.x][player.y].angle_to(this_object) + ')'
+
+				text_options.append(optional_ID_tag + this_object.name + quantity + general_info)
+				
+		else:
+			text_options = copy.deepcopy(options)
+	else:
+		return None
+		
+	for i in range(0, len(text_options)):
+		text_options[i] = '~ ' + text_options[i]
+		
+	if render_screen_before_displaying: render_all(exclude_tooltips = True)
+	
+	menu_panel = Screen_Console(header = header, written_text = written_text, list_of_choices = text_options, prompt_for_choice = prompt_for_choice, main_screen_console = main_screen_console)
+	
+	chosen_text_option = menu_panel.display_me()
+	
+	if not chosen_text_option:
+		return None
+	
+	if prompt_for_choice == 'Text Entry':
+		return chosen_text_option
+	
+	for index in range(0, len(text_options)):
+		if chosen_text_option == text_options[index]:
+			return options[index]
+
+	return None
+	
+def main_menu():
+	global SHOW_ALL, HEAR_ALL, PLAY_MUSIC, DISABLE_THE_THING, fov_recompute, scoreboard, main_game_ui
+	
+	
+	try:
+		load_scoreboard()
+		
+	except:
+		# we didn't need your file anyway!
+		scoreboard = Scoreboard()
+		pass
+	
+	
+	fov_recompute = False
+	img = libtcod.image_load('menu_background.png')
+
+	pygame.mixer.pre_init(frequency = 44100, size = -16, channels = 2, buffer = 1024)
+	pygame.mixer.init()
+	
+	initialize_sounds()
+	
+	easter_egg = 0
+	
+	while not libtcod.console_is_window_closed():
+	
+		# show the background image, at twice the regular console resolution
+		libtcod.image_blit_2x(img, 0, 0, 0)
+
+		# show the game's title, and some credits!
+		libtcod.console_set_default_foreground(0, libtcod.light_yellow)
+	
+		# show options and wait for the player's choice
+		
+		menu_options = ['Play a new game', 'Show Full Map [' + str(SHOW_ALL) + ']', 'Show All Messages [' + str(HEAR_ALL) + ']', 'Play Music [' + str(PLAY_MUSIC) + ']', 'Disable The Thing [' + str(DISABLE_THE_THING) + ']', 'Screen Resolution', 'Toggle Fullscreen', 'Game Skin', 'Scoreboard', 'Quit']
+		
+		choice = menu_prompt(options = menu_options, written_text = [get_dialogue_by_ID(307)], header = 'THE THING', render_screen_before_displaying = False, main_screen_console = True)
+	
+		if choice == menu_options[0]:  # new game
+		
+			if PLAY_MUSIC:
+				if easter_egg < 4:
+					play_music('music.ogg')
+				else:
+					play_music('music_2.ogg')
+			new_game()
+			play_game()
+		elif choice == menu_options[1]:
+			if SHOW_ALL:
+				SHOW_ALL = False
+			else:
+				SHOW_ALL = True
+		elif choice == menu_options[2]:  
+			if HEAR_ALL:
+				HEAR_ALL = False
+			else:
+				HEAR_ALL = True
+		elif choice == menu_options[3]: 
+			if PLAY_MUSIC:
+				PLAY_MUSIC = False
+			else:
+				PLAY_MUSIC = True
+			easter_egg += 1
+		elif choice == menu_options[4]: 
+			if DISABLE_THE_THING:
+				DISABLE_THE_THING = False
+			else:
+				DISABLE_THE_THING = True
+		elif choice == menu_options[5]:
+			res_options = [
+			'1920 x 1080',
+			'1600 x 900',
+			'1440 x 900',
+			'1366 x 768',
+			'1280 x 800',
+			'1024 x 768',
+			'800 x 600',
+			'Cancel']
+			res_choice = menu_prompt(options = res_options, written_text = ['Choose your screen resolution:'], header = 'Screen Resolution', render_screen_before_displaying = False, main_screen_console = True)
+			if res_choice == res_options[0]: establish_constants(1920, 1080)
+			elif res_choice == res_options[1]: establish_constants(1600, 900)
+			elif res_choice == res_options[2]: establish_constants(1440, 900)
+			elif res_choice == res_options[3]: establish_constants(1366, 768)
+			elif res_choice == res_options[4]: establish_constants(1280, 800)
+			elif res_choice == res_options[5]: establish_constants(1024, 768)
+			elif res_choice == res_options[6]: establish_constants(800, 600)
+			elif res_choice == res_options[7]: pass
+			
+			libtcod.console_clear(0)
+			libtcod.console_delete(0)
+			libtcod.console_init_root(SCREEN_WIDTH, SCREEN_HEIGHT, 'python/libtcod tutorial', False, renderer = libtcod.RENDERER_GLSL)
+			main_game_ui = Game_UI()
+		elif choice == menu_options[6]:
+		
+			if not libtcod.console_is_fullscreen():
+				actual_x_res , actual_y_res = libtcod.sys_get_current_resolution() 
+				libtcod.sys_force_fullscreen_resolution(actual_x_res, actual_y_res)
+				establish_constants(actual_x_res, actual_y_res)
+				libtcod.console_clear(0)
+				libtcod.console_delete(0)
+				libtcod.console_init_root(SCREEN_WIDTH, SCREEN_HEIGHT, 'python/libtcod tutorial', False, renderer = libtcod.RENDERER_GLSL)
+				main_game_ui = Game_UI()
+				libtcod.console_set_fullscreen(True)
+			else:
+				libtcod.console_set_fullscreen(False)
+		
+		elif choice == menu_options[7]:
+			skin_options = ['Skin 1', 'Skin 2', 'Skin 3', 'Cancel']
+			skin_choice = menu_prompt(options = skin_options, written_text = ['Choose your skin:'], header = 'Screen Resolution', render_screen_before_displaying = False, main_screen_console = True)
+			if skin_choice == skin_options[0]: 
+				libtcod.console_set_custom_font('ascii_font_2.png', libtcod.FONT_TYPE_GREYSCALE | libtcod.FONT_LAYOUT_ASCII_INROW)
+			elif skin_choice == skin_options[1]:
+				libtcod.console_set_custom_font('ascii_font_7.png', libtcod.FONT_TYPE_GREYSCALE | libtcod.FONT_LAYOUT_ASCII_INROW)
+			elif skin_choice == skin_options[2]:
+				libtcod.console_set_custom_font('ascii_font_8.png', libtcod.FONT_TYPE_GREYSCALE | libtcod.FONT_LAYOUT_ASCII_INROW)
+				
+			libtcod.console_clear(0)
+			libtcod.console_delete(0)
+			libtcod.console_init_root(SCREEN_WIDTH, SCREEN_HEIGHT, 'python/libtcod tutorial', False, renderer = libtcod.RENDERER_GLSL)
+			main_game_ui = Game_UI()
+			
+		elif choice == menu_options[8]:
+			scoreboard.show_scoreboard()
+		elif choice == menu_options[9]:  # quit
+			sys.exit()
+
+actual_x_res , actual_y_res = libtcod.sys_get_current_resolution() 
+libtcod.sys_force_fullscreen_resolution(actual_x_res, actual_y_res)
+establish_constants(actual_x_res, actual_y_res)
+			
+libtcod.console_set_custom_font('ascii_font_2.png', libtcod.FONT_TYPE_GREYSCALE | libtcod.FONT_LAYOUT_ASCII_INROW)
+
+libtcod.console_init_root(SCREEN_WIDTH, SCREEN_HEIGHT, 'python/libtcod tutorial', False, renderer = libtcod.RENDERER_GLSL)
 libtcod.sys_set_fps(LIMIT_FPS)
 
-con = libtcod.console_new(MAP_WIDTH, MAP_HEIGHT)
-panel = libtcod.console_new(OBJECT_INFO_BAR_WIDTH, PANEL_HEIGHT)
-message_panel = libtcod.console_new(MESSAGE_PANEL_WIDTH, PANEL_HEIGHT)
-object_panel = libtcod.console_new(OBJECT_INFO_BAR_WIDTH, MAP_HEIGHT)
+main_game_ui = Game_UI()
 
 mouse = libtcod.Mouse()
 key = libtcod.Key()
 
-libtcod.console_set_fullscreen(not libtcod.console_is_fullscreen())
-
 main_menu()
-
-"""
-Anger: resentment, irritation, frustration;
-Fear: apprehension, overwhelmed, threatened, scared;
-Pain: sad, lonely, hurt, pity;
-Joy: hopeful, elated, happy, excitement
-Passion: enthusiasm, desire, zest;
-Love: affection, tenderness, compassion, warmth;
-Shame: embarrassment, humble, exposed;
-Guilt: regretful, contrite, and remorseful
-"""
-
 
 
